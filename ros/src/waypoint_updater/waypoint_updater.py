@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import rospy
-from geometry_msgs.msg import PoseStamped,TwistStamped
+from geometry_msgs.msg import PoseStamped
 from styx_msgs.msg import Lane, Waypoint
 
 import math
@@ -30,26 +30,29 @@ class WaypointUpdater(object):
 
         rospy.Subscriber('/current_pose', PoseStamped, self.pose_cb)
         rospy.Subscriber('/base_waypoints', Lane, self.waypoints_cb)
-        rospy.Subscriber("/current_velocity", TwistStamped, self.current_velocity_cb)
 
         # TODO: Add a subscriber for /traffic_waypoint and /obstacle_waypoint below
-        #rospy.Subscriber('/traffic_waypoint', Int32, self.traffic_cb)
-        #rospy.Subscriber('/obstacle_waypoint', PoseStamped, self.obstacle_cb)
+
 
         self.final_waypoints_pub = rospy.Publisher('final_waypoints', Lane, queue_size=1)
 
         # TODO: Add other member variables you need below
-
-        self.velocity = None
-
+        self.base_waypoints = Lane()
+        self.current_pose = PoseStamped()
+        final_waypoints = Lane()
+        #self.final_waypoints_pub.publish(final_waypoints)
         rospy.spin()
+
+    def
 
     def pose_cb(self, msg):
         # TODO: Implement
+        self.current_pose = msg
         pass
 
     def waypoints_cb(self, waypoints):
         # TODO: Implement
+        self.base_waypoints = waypoints
         pass
 
     def traffic_cb(self, msg):
@@ -60,8 +63,6 @@ class WaypointUpdater(object):
         # TODO: Callback for /obstacle_waypoint message. We will implement it later
         pass
 
-    def current_velocity_cb(self, msg):
-        self.velocity = msg.twist.linear.x
 
     def get_waypoint_velocity(self, waypoint):
         return waypoint.twist.twist.linear.x
