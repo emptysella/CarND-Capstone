@@ -43,8 +43,6 @@ class WaypointUpdater(object):
         #self.final_waypoints_pub.publish(final_waypoints)
         rospy.spin()
 
-    def
-
     def pose_cb(self, msg):
         # TODO: Implement
         self.current_pose = msg
