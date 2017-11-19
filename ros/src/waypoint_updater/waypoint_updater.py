@@ -33,13 +33,14 @@ class WaypointUpdater(object):
         rospy.Subscriber("/current_velocity", TwistStamped, self.velocity_cb)
 
         # TODO: Add a subscriber for /traffic_waypoint and /obstacle_waypoint below
-        rospy.Subscriber('/traffic_waypoint', Int32, self.traffic_cb)
-        rospy.Subscriber('/obstacle_waypoint', PoseStamped, self.obstacle_cb)
+        #rospy.Subscriber('/traffic_waypoint', Int32, self.traffic_cb)
+        #rospy.Subscriber('/obstacle_waypoint', PoseStamped, self.obstacle_cb)
 
         self.final_waypoints_pub = rospy.Publisher('final_waypoints', Lane, queue_size=1)
 
         # TODO: Add other member variables you need below
 
+        self.velocity = None
 
         rospy.spin()
 
@@ -58,6 +59,9 @@ class WaypointUpdater(object):
     def obstacle_cb(self, msg):
         # TODO: Callback for /obstacle_waypoint message. We will implement it later
         pass
+
+    def velocity_cb(self, msg):
+        self.velocity = msg.twist
 
     def get_waypoint_velocity(self, waypoint):
         return waypoint.twist.twist.linear.x
