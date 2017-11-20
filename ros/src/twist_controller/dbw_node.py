@@ -53,10 +53,28 @@ class DBWNode(object):
         self.brake_pub = rospy.Publisher('/vehicle/brake_cmd',
                                          BrakeCmd, queue_size=1)
 
+	self.current_linear_velocity = None
+	self.current_angular_velocity = None
+	self.target_linear_velocity = None
+	self.target_angular_velocity = None
+	self.dbwenabled = None
+
         # TODO: Create `TwistController` object
         # self.controller = TwistController(<Arguments you wish to provide>)
+	controller_params = {
+		'wheel_base':	   wheel_base,
+		'steer_ratio':     steer_ratio,
+		'max_lat_accel':   max_lat_accel,
+		'max_steer_angle': max_steer_angle,
+		'decel_limit':     decel_limit,
+		'accel_limit':     accel_limit
+	}
+	self.controller = Controller(**controller_params)
 
         # TODO: Subscribe to all the topics you need to
+	rospy.Subscriber("/current_velocity", TwistStamped, self.read_current_velocity)
+	rospy.Subscriber("/twist_cmd", TwistStamped, self.read_target_velocity)
+	rospy.Subscriber("/vehicle/dbw_enabled", Bool, self.read_dbwenabled)
 
         self.loop()
 
@@ -71,8 +89,10 @@ class DBWNode(object):
             #                                                     <dbw status>,
             #                                                     <any other argument you need>)
             # if <dbw is enabled>:
-            #   self.publish(throttle, brake, steer)
-            rate.sleep()
+	    if self.dbwenabled:
+		throttle, brake, steer = self.controller.control(self.target_linear_velocity, self.target_angular_velocity, self.current_linear_velocity, self.dbwenabled)
+            	self.publish(throttle, brake, steer)
+            	rate.sleep()
 
     def publish(self, throttle, brake, steer):
         tcmd = ThrottleCmd()
@@ -92,6 +112,27 @@ class DBWNode(object):
         bcmd.pedal_cmd = brake
         self.brake_pub.publish(bcmd)
 
+    def read_current_velocity(self, msg):
+	self.current_linear_velocity = msg.twist.linear.x
+	self.current_angular_velocity = msg.twist.angular.z
+	# TODO: calculate current steering value using yaw_controller.py 
+	#rospy.loginfo("Received a /current_velocity message!")
+    	rospy.loginfo("[/current_velocity] Linear velocity:    %f"%(self.current_linear_velocity))
+	rospy.loginfo("[/current_velocity] Angular velocity:   %f"%(self.current_angular_velocity))
+
+    def read_target_velocity(self, msg):
+        #rospy.loginfo("Received a /twist_cmd message!")
+	rospy.loginfo("[/twist_cmd]        Header:             [%s, %s, %s]"%(msg.header.seq, msg.header.stamp, msg.header.frame_id))
+        rospy.loginfo("[/twist_cmd]        Linear Components:  [%f, %f, %f]"%(msg.twist.linear.x, msg.twist.linear.y, msg.twist.linear.z))
+        rospy.loginfo("[/twist_cmd]        Angular Components: [%f, %f, %f]"%(msg.twist.angular.x, msg.twist.angular.y, msg.twist.angular.z))
+	self.target_linear_velocity = msg.twist.linear.x
+	self.target_angular_velocity = msg.twist.angular.z
+	# TODO: calculate target steering value using yaw_controller.py
+
+    def read_dbwenabled(self, msg):
+	self.dbwenabled = msg.data
+        #rospy.loginfo("Received a /vehicle/dbw_enabled message!")
+        rospy.loginfo("[/vehicle/dbw_enabled] Value: %f"%(self.dbwenabled))
 
 if __name__ == '__main__':
     DBWNode()
