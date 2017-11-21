@@ -172,7 +172,8 @@ class WaypointUpdater(object):
     ***************************************************************************
         Pose call-back fuction. Also use to set the car pose orientation
     ***************************************************************************
-    """    def pose_cb(self, msg):
+    """
+    def pose_cb(self, msg):
 
         self.current_pose_flag = True
         self.current_pose = msg
@@ -191,7 +192,7 @@ class WaypointUpdater(object):
 
         self.base_waypoints_flag = True
 
-        self.base_waypoints = msg.waypoints
+        self.base_waypoints = msg
         self.wp_num = len(msg.waypoints)
 
     def traffic_cb(self, msg):
