@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import rospy
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import PoseStamped, TwistStamped
 from styx_msgs.msg import Lane, Waypoint
 
 import math
@@ -28,6 +28,7 @@ class WaypointUpdater(object):
 
         rospy.Subscriber('/current_pose', PoseStamped, self.pose_cb)
         rospy.Subscriber('/base_waypoints', Lane, self.waypoints_cb)
+        rospy.Subscriber('/current_velocity', TwistStamped, self.twist_cb)
 
         # TODO: Add a subscriber for /traffic_waypoint and /obstacle_waypoint below
 
@@ -37,12 +38,13 @@ class WaypointUpdater(object):
         # TODO: Add other member variables you need below
         self.base_waypoints      = Lane()
         self.current_pose        = PoseStamped()
+        self.current_twist       = TwistStamped()
         self.wp_num              = 0
 
         self.base_waypoints_flag = False
         self.current_pose_flag  = False
-		
-		self.initial_velocity = 10.0
+
+        self.initial_velocity = 10.0
 
         # Vehicle Pose variables
         self.car_pose_x = None
@@ -99,16 +101,12 @@ class WaypointUpdater(object):
 
         for i in range(initial_wp, final_wp):
             idx = i % self.wp_num
-			
-			### NOTE: Here we update the velovity for each waypoint to make it move it
-			
-			### Alternative way to do it
-			
-			### trajectory_waypoints.waypoints[idx].twist.twist.linear.x = self.initial_velocity 
-			
-			### using the method of the class
-			self.set_waypoint_velocity(trajectory_waypoints, idx, self.initial_velocity )
-			
+            ### NOTE: Here we update the velovity for each waypoint to make it move it
+            ### Alternative way to do it
+            ### trajectory_waypoints.waypoints[idx].twist.twist.linear.x = self.initial_velocity
+            ### using the method of the class
+            self.set_waypoint_velocity(trajectory_waypoints, idx, self.initial_velocity )
+
             trajectory_waypoints.waypoints.append(self.base_waypoints.waypoints[idx])
 
         return trajectory_waypoints
@@ -206,6 +204,9 @@ class WaypointUpdater(object):
 
         self.base_waypoints = msg
         self.wp_num = len(msg.waypoints)
+
+    def twist_cb(self, msg):
+        self.current_twist = msg
 
     def traffic_cb(self, msg):
         # TODO: Callback for /traffic_waypoint message. Implement
