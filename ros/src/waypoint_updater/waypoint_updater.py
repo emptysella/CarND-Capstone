@@ -41,6 +41,8 @@ class WaypointUpdater(object):
 
         self.base_waypoints_flag = False
         self.current_pose_flag  = False
+		
+		self.initial_velocity = 10.0
 
         # Vehicle Pose variables
         self.car_pose_x = None
@@ -97,6 +99,16 @@ class WaypointUpdater(object):
 
         for i in range(initial_wp, final_wp):
             idx = i % self.wp_num
+			
+			### NOTE: Here we update the velovity for each waypoint to make it move it
+			
+			### Alternative way to do it
+			
+			### trajectory_waypoints.waypoints[idx].twist.twist.linear.x = self.initial_velocity 
+			
+			### using the method of the class
+			self.set_waypoint_velocity(trajectory_waypoints, idx, self.initial_velocity )
+			
             trajectory_waypoints.waypoints.append(self.base_waypoints.waypoints[idx])
 
         return trajectory_waypoints
