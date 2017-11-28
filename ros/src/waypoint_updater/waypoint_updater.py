@@ -28,7 +28,7 @@ class WaypointUpdater(object):
 
         rospy.Subscriber('/current_pose', PoseStamped, self.pose_cb)
         rospy.Subscriber('/base_waypoints', Lane, self.waypoints_cb)
-        rospy.Subscriber('/current_velocity', TwistStamped, self.twist_cb)
+        #rospy.Subscriber('/current_velocity', TwistStamped, self.twist_cb)
 
         # TODO: Add a subscriber for /traffic_waypoint and /obstacle_waypoint below
 
@@ -47,9 +47,9 @@ class WaypointUpdater(object):
         self.initial_velocity = 10.0
 
         # Vehicle Pose variables
-        self.car_pose_x = None
-        self.car_pose_y = None
-        self.car_yaw    = None
+        self.car_pose_x = 0.0
+        self.car_pose_y = 0.0
+        self.car_yaw    = 0.0
 
         """
         @ Brief In-Loop --> publish trajectory and update waypoints
@@ -66,12 +66,13 @@ class WaypointUpdater(object):
     """
     def publish_trajectory(self):
 
-        rate = rospy.Rate(10)
+        rate = rospy.Rate(50)
 
         while not rospy.is_shutdown():
 
             isWaypoints = len(self.base_waypoints.waypoints)
-            if( isWaypoints & self.base_waypoints_flag & self.current_pose_flag):
+            #if( isWaypoints > 0 & self.base_waypoints_flag & self.current_pose_flag):
+	    if( isWaypoints > 0 ):
 
                 # STAGE 1. find closer Waypoint to the car
                 closer_waypoint = self.closer_waypoint()
@@ -99,13 +100,16 @@ class WaypointUpdater(object):
         initial_wp = closer_waypoint
         final_wp   = closer_waypoint + LOOKAHEAD_WPS
 
+	rospy.loginfo("closer_waypoint: %d", closer_waypoint)
+
         for i in range(initial_wp, final_wp):
             idx = i % self.wp_num
             ### NOTE: Here we update the velovity for each waypoint to make it move it
             ### Alternative way to do it
             ### trajectory_waypoints.waypoints[idx].twist.twist.linear.x = self.initial_velocity
             ### using the method of the class
-            self.set_waypoint_velocity(trajectory_waypoints, idx, self.initial_velocity )
+	    
+            self.set_waypoint_velocity(self.base_waypoints.waypoints, idx, self.initial_velocity )
 
             trajectory_waypoints.waypoints.append(self.base_waypoints.waypoints[idx])
 
@@ -145,19 +149,20 @@ class WaypointUpdater(object):
 
         wp_index = 0
         all_wp_lenght = len(self.base_waypoints.waypoints)
+	#rospy.loginfo("all_wp_lenght: %d", all_wp_lenght)
+	min_dist = float('inf')
         for i in range( 1, all_wp_lenght):
 
             curr_wp_x = self.base_waypoints.waypoints[i].pose.pose.position.x
             curr_wp_y = self.base_waypoints.waypoints[i].pose.pose.position.y
             current_waypoint = np.array((curr_wp_x,curr_wp_y))
+   
+	    dist = np.linalg.norm(current_waypoint - car_pose)
+	    if (dist < min_dist):
+		min_dist = dist
+		wp_index = i
 
-            gap = np.linalg.norm(current_waypoint - origin_wp)
-
-            if (gap < distance):
-                distance = gap
-                wp_index = i
-
-        ### Stage1
+        ### Stage2
         ###----------------------------------------------------------------------
         x_wp = self.base_waypoints.waypoints[wp_index].pose.pose.position.x
         y_wp = self.base_waypoints.waypoints[wp_index].pose.pose.position.y
@@ -196,6 +201,7 @@ class WaypointUpdater(object):
                                                                     orientation.y,
                                                                     orientation.z,
                                                                     orientation.w])
+	#rospy.loginfo("self.car_pose_x: %d, self.car_pose_y: %d, self.car_yaw: %d", self.car_pose_x, self.car_pose_y, self.car_yaw)
 
 
     def waypoints_cb(self, msg):
