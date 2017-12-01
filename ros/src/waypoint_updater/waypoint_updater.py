@@ -28,10 +28,9 @@ class WaypointUpdater(object):
 
         rospy.Subscriber('/current_pose', PoseStamped, self.pose_cb)
         rospy.Subscriber('/base_waypoints', Lane, self.waypoints_cb)
-        rospy.Subscriber('/current_velocity', TwistStamped, self.twist_cb)
 
         # TODO: Add a subscriber for /traffic_waypoint and /obstacle_waypoint below
-
+		
 
         self.final_waypoints_pub = rospy.Publisher('final_waypoints', Lane, queue_size=1)
 
@@ -66,7 +65,7 @@ class WaypointUpdater(object):
     """
     def publish_trajectory(self):
 
-        rate = rospy.Rate(10)
+        rate = rospy.Rate(2)
 
         while not rospy.is_shutdown():
 
@@ -151,7 +150,7 @@ class WaypointUpdater(object):
             curr_wp_y = self.base_waypoints.waypoints[i].pose.pose.position.y
             current_waypoint = np.array((curr_wp_x,curr_wp_y))
 
-            gap = np.linalg.norm(current_waypoint - origin_wp)
+            gap = np.linalg.norm(current_waypoint - car_pose)
 
             if (gap < distance):
                 distance = gap
@@ -186,7 +185,7 @@ class WaypointUpdater(object):
     def pose_cb(self, msg):
 
         self.current_pose_flag = True
-        self.current_pose = msg
+        self.current_pose = msg.pose
 
         self.car_pose_x = msg.pose.position.x
         self.car_pose_y = msg.pose.position.y
