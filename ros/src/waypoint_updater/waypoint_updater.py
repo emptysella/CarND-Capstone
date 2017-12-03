@@ -44,9 +44,6 @@ class WaypointUpdater(object):
         self.current_twist       = TwistStamped()
         self.wp_num              = 0
 
-        self.base_waypoints_flag = False
-        self.current_pose_flag  = False
-
         self.initial_velocity = 5.0
         self.stop_wayoint  = 0
 
@@ -54,6 +51,12 @@ class WaypointUpdater(object):
         self.car_pose_x = 0.0
         self.car_pose_y = 0.0
         self.car_yaw    = 0.0
+
+        # velocity variables and properties
+        self.controlGap_3   = 3
+        self.controlGap_60  = 60
+        self.controlGap_100 = 100
+
 
         """
         @ Brief In-Loop --> publish trajectory and update waypoints
@@ -75,7 +78,7 @@ class WaypointUpdater(object):
         while not rospy.is_shutdown():
 
             isWaypoints = len(self.base_waypoints.waypoints)
-            #if( isWaypoints > 0 & self.base_waypoints_flag & self.current_pose_flag):
+
 	    if( isWaypoints > 0 ):
 
                 # STAGE 1. find closer Waypoint to the car
@@ -88,29 +91,57 @@ class WaypointUpdater(object):
                 self.final_waypoints_pub.publish(trajectory_waypoints)
 
             rate.sleep()
+
+    """
+    @ Brief
+    ***************************************************************************
+        This method is used to update the velocity in the waypoints
+    ***************************************************************************
+    """
     def velocity_update(self, closer_waypoint,idx):
+
         if self.stop_wayoint > 0 :
-	#distance_to_stopLine = self.distance(self.base_waypoints.waypoints, closer_waypoint, self.stop_wayoint)
+            #distance_to_stopLine = self.distance(self.base_waypoints.waypoints, closer_waypoint, self.stop_wayoint)
+
             carpose = self.base_waypoints.waypoints[closer_waypoint].pose.pose.position
-            ltpos =  self.base_waypoints.waypoints[self.stop_wayoint].pose.pose.position
-            distance_to_stopLine = self.eucledien_distance(carpose.x,carpose.y,carpose.z,ltpos.x,ltpos.y,ltpos.z)
+            ltpos   =  self.base_waypoints.waypoints[self.stop_wayoint].pose.pose.position
+
+            distance_to_stopLine = self.eucledien_distance( carpose.x,
+                                                            carpose.y,
+                                                            carpose.z,
+                                                            ltpos.x,
+                                                            ltpos.y,
+                                                            ltpos.z
+                                                            )
+
             #rospy.loginfo("Distance: %d", distance_to_stopLine)
-            if(distance_to_stopLine < 100):
-                dropVelRatioAhead = distance_to_stopLine/ (100)
+
+            if(distance_to_stopLine < self.controlGap_100):
+                dropVelRatioAhead = distance_to_stopLine/ (self.controlGap_100)
                 self.set_waypoint_velocity(self.base_waypoints.waypoints, idx,  (dropVelRatioAhead * self.initial_velocity))
-                if distance_to_stopLine > 60 :
-                    print (distance_to_stopLine,(dropVelRatioAhead * self.initial_velocity))
-		if (distance_to_stopLine < 60):
-		    dropVelRatioActual = distance_to_stopLine/ (100 + distance_to_stopLine)
-	            self.set_waypoint_velocity(self.base_waypoints.waypoints, idx,  (dropVelRatioActual * self.initial_velocity))
-                    print (distance_to_stopLine,(dropVelRatioActual * self.initial_velocity))
-		if(distance_to_stopLine < 3):
-	            dropVelRatioEmrgency = 0
-	            self.set_waypoint_velocity(self.base_waypoints.waypoints, idx,  (dropVelRatioEmrgency * self.initial_velocity))    
-			    
+                if distance_to_stopLine > self.controlGap_60 :
+                    print(distance_to_stopLine, (dropVelRatioAhead * self.initial_velocity) )
+
+		if (distance_to_stopLine < self.controlGap_60):
+		    dropVelRatioActual = distance_to_stopLine/ (self.controlGap_100 + distance_to_stopLine)
+
+            self.set_waypoint_velocity( self.base_waypoints.waypoints,
+                                        idx,
+                                        (dropVelRatioActual * self.initial_velocity)
+                                        )
+
+            print (distance_to_stopLine,(dropVelRatioActual * self.initial_velocity))
+
+		if(distance_to_stopLine < self.controlGap_3):
+            dropVelRatioEmrgency = 0
+
+            self.set_waypoint_velocity( self.base_waypoints.waypoints,idx, dropVelRatioEmrgency * self.initial_velocity) )
+
         else:
             self.previousVelocity = self.initial_velocity
             self.set_waypoint_velocity(self.base_waypoints.waypoints, idx, (self.initial_velocity) )
+
+
     """
     @ Brief
     ***************************************************************************
@@ -127,14 +158,14 @@ class WaypointUpdater(object):
         final_wp   = closer_waypoint + LOOKAHEAD_WPS
 
 	#rospy.loginfo("closer_waypoint: %d", closer_waypoint)
-        
+
         for i in range(initial_wp, final_wp):
             idx = i % self.wp_num
             ### NOTE: Here we update the velovity for each waypoint to make it move it
             ### Alternative way to do it
             ### trajectory_waypoints.waypoints[idx].twist.twist.linear.x = self.initial_velocity
             ### using the method of the class
-	    
+
             self.set_waypoint_velocity(self.base_waypoints.waypoints, idx, self.initial_velocity )
             self.velocity_update(closer_waypoint,idx)
             trajectory_waypoints.waypoints.append(self.base_waypoints.waypoints[idx])
@@ -177,14 +208,15 @@ class WaypointUpdater(object):
 
         wp_index = 0
         all_wp_lenght = len(self.base_waypoints.waypoints)
-	#rospy.loginfo("all_wp_lenght: %d", all_wp_lenght)
-	min_dist = float('inf')
+        #rospy.loginfo("all_wp_lenght: %d", all_wp_lenght)
+
+        min_dist = float('inf')
         for i in range( 1, all_wp_lenght):
 
             curr_wp_x = self.base_waypoints.waypoints[i].pose.pose.position.x
             curr_wp_y = self.base_waypoints.waypoints[i].pose.pose.position.y
             current_waypoint = np.array((curr_wp_x,curr_wp_y))
-   
+
 	    dist = np.linalg.norm(current_waypoint - car_pose)
 	    if (dist < min_dist):
 		min_dist = dist
@@ -217,8 +249,6 @@ class WaypointUpdater(object):
     ***************************************************************************
     """
     def pose_cb(self, msg):
-
-        self.current_pose_flag = True
         self.current_pose = msg
 
         self.car_pose_x = msg.pose.position.x
@@ -229,12 +259,11 @@ class WaypointUpdater(object):
                                                                     orientation.y,
                                                                     orientation.z,
                                                                     orientation.w])
+
 	#rospy.loginfo("self.car_pose_x: %d, self.car_pose_y: %d, self.car_yaw: %d", self.car_pose_x, self.car_pose_y, self.car_yaw)
 
 
     def waypoints_cb(self, msg):
-
-        self.base_waypoints_flag = True
         self.base_waypoints = msg
         self.wp_num = len(msg.waypoints)
 
