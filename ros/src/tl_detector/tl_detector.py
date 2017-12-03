@@ -13,8 +13,10 @@ import yaml
 import sys
 import math
 
+car_position =  0
 STATE_COUNT_THRESHOLD = 3
-
+PUBLISHING_RATE = 12 # Publishing frequency (Hz)
+DISTANCE_LIMIT = 200
 class TLDetector(object):
     def __init__(self):
         rospy.init_node('tl_detector')
@@ -50,7 +52,6 @@ class TLDetector(object):
         self.last_state = TrafficLight.UNKNOWN
         self.last_wp = -1
         self.state_count = 0
-
         rospy.spin()
 
     def pose_cb(self, msg):
@@ -66,37 +67,6 @@ class TLDetector(object):
         distance = math.sqrt((curx - refx) ** 2 + (cury - refy) ** 2 + (curz - refz) ** 2)
 	return distance		
 		
-		
-    def image_cb(self, msg):
-        """Identifies red lights in the incoming camera image and publishes the index
-            of the waypoint closest to the red light's stop line to /traffic_waypoint
-
-        Args:
-            msg (Image): image from car-mounted camera
-
-        """
-        self.has_image = True
-        self.camera_image = msg
-        light_wp, state = self.process_traffic_lights()
-
-        '''
-        Publish upcoming red lights at camera frequency.
-        Each predicted state has to occur `STATE_COUNT_THRESHOLD` number
-        of times till we start using it. Otherwise the previous stable state is
-        used.
-        '''
-        if self.state != state:
-            self.state_count = 0
-            self.state = state
-        elif self.state_count >= STATE_COUNT_THRESHOLD:
-            self.last_state = self.state
-            light_wp = light_wp if state == TrafficLight.RED else -1
-            self.last_wp = light_wp
-            self.upcoming_red_light_pub.publish(Int32(light_wp))
-        else:
-            self.upcoming_red_light_pub.publish(Int32(self.last_wp))
-        self.state_count += 1
-
     def get_closest_waypoint(self, pose):
         """Identifies the closest path waypoint to the given position
             https://en.wikipedia.org/wiki/Closest_pair_of_points_problem
@@ -125,7 +95,42 @@ class TLDetector(object):
                 closewpindex = i
                 mindistance = dist
 				
-        return closewpindex		
+        return closewpindex
+	
+    def image_cb(self, msg):
+        """Identifies red lights in the incoming camera image and publishes the index
+            of the waypoint closest to the red light's stop line to /traffic_waypoint
+
+        Args:
+            msg (Image): image from car-mounted camera
+
+        """
+        self.has_image = True
+        self.camera_image = msg
+        light_wp, state = self.process_traffic_lights()
+
+        '''
+        Publish upcoming red lights at camera frequency.
+        Each predicted state has to occur `STATE_COUNT_THRESHOLD` number
+        of times till we start using it. Otherwise the previous stable state is
+        used.
+        '''
+	rate = rospy.Rate(PUBLISHING_RATE)        
+	if self.state != state:
+            self.state_count = 0
+            self.state = state
+        elif self.state_count >= STATE_COUNT_THRESHOLD:
+            
+            self.last_state = self.state
+            light_wp = light_wp if state == TrafficLight.RED else -1
+            self.last_wp = light_wp
+            #print("publishing.....................")
+            self.upcoming_red_light_pub.publish(Int32(light_wp))
+        else:
+            self.upcoming_red_light_pub.publish(Int32(self.last_wp))
+        self.state_count += 1
+
+		
 		
     def get_light_state(self, light):
         """Determines the current color of the traffic light
@@ -179,7 +184,7 @@ class TLDetector(object):
             return -1, TrafficLight.UNKNOWN	
         else:
             carpose = self.waypoints.waypoints[car_position].pose.pose.position
-         
+        car_position = 0
         if(self.pose):
             car_position = self.get_closest_waypoint(self.pose.pose)
 
@@ -192,12 +197,42 @@ class TLDetector(object):
 	        light_wp_idx 	= i
                 mindistance    	= dist	
         #print(light_wp_idx,carpose, self.lights[light_wp_idx].pose.pose.position, mindistance)
+        
+        #rospy.loginfo("car_position: %d", car_position)
 	#return -1, TrafficLight.UNKNOWN
-	if light_wp_idx is not None:
+	stop_wp_idx = None
+        mindist = sys.maxsize
+        closelightIdx  =  self.get_closest_waypoint(self.lights[light_wp_idx].pose.pose)
+        #print(closelightIdx , car_position)
+        if ((light_wp_idx is not None) and (closelightIdx > (car_position + 1))):
             light = self.lights[light_wp_idx].pose.pose.position
             state = self.get_light_state(light)
-            return light_wp_idx, state
-        self.waypoints = None
+            
+	    #find stop line waypoint close to closest traffic light
+            for i in range(0, len(stop_line_positions)):
+                stoplinepose = PoseStamped() 
+                stoplinepose.pose.position.x = stop_line_positions[i][0]
+                stoplinepose.pose.position.y = stop_line_positions[i][1]
+                stoplinepose.pose.position.z = 0
+                closeWpIdx  =  self.get_closest_waypoint(stoplinepose.pose)
+                stoplpos    = self.waypoints.waypoints[closeWpIdx].pose.pose.position
+                #print("dist = " , dist)
+                dist  = self.eucledien_distance(stoplpos.x,stoplpos.y,stoplpos.z,light.x,light.y,0)
+                if (dist < mindist) and (closeWpIdx > (car_position + 1)):
+	            stop_wp_idx 	= closeWpIdx
+                    mindist             = dist
+                
+            #print("light state ",state)
+            if stop_wp_idx is not None:
+                #rospy.loginfo("Trafficdistance: %d  %d %d", mindist, stop_wp_idx, car_position)    
+                # only update traffic light if min distance is close to diatnace limit
+                if (mindist < DISTANCE_LIMIT) : 
+                    return stop_wp_idx, state
+                else:
+                    return -1, TrafficLight.UNKNOWN
+            else:
+                return light_wp_idx, state
+        #self.waypoints = None
         return -1, TrafficLight.UNKNOWN
 
 if __name__ == '__main__':

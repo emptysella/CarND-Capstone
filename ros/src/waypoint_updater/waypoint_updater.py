@@ -3,7 +3,7 @@
 import rospy
 from geometry_msgs.msg import PoseStamped, TwistStamped
 from styx_msgs.msg import Lane, Waypoint
-
+from std_msgs.msg import Int32
 import math
 import numpy as np
 import tf
@@ -19,7 +19,10 @@ as well as to verify your TL classifier.
 TODO (for Yousuf and Aaron): Stopline location for each traffic light.
 '''
 
-LOOKAHEAD_WPS = 200 # Number of waypoints we will publish. You can change this number
+LOOKAHEAD_WPS = 50 # Number of waypoints we will publish. You can change this number
+dropVelRatioAhead = 0
+dropVelRatioActual = 0
+dropVelRatioEmrgency = 0
 
 
 class WaypointUpdater(object):
@@ -31,7 +34,7 @@ class WaypointUpdater(object):
         #rospy.Subscriber('/current_velocity', TwistStamped, self.twist_cb)
 
         # TODO: Add a subscriber for /traffic_waypoint and /obstacle_waypoint below
-
+	self.traffic_waypoint_sub = rospy.Subscriber('/traffic_waypoint', Int32, self.traffic_cb)
 
         self.final_waypoints_pub = rospy.Publisher('final_waypoints', Lane, queue_size=1)
 
@@ -44,7 +47,8 @@ class WaypointUpdater(object):
         self.base_waypoints_flag = False
         self.current_pose_flag  = False
 
-        self.initial_velocity = 10.0
+        self.initial_velocity = 5.0
+        self.stop_wayoint  = 0
 
         # Vehicle Pose variables
         self.car_pose_x = 0.0
@@ -84,7 +88,29 @@ class WaypointUpdater(object):
                 self.final_waypoints_pub.publish(trajectory_waypoints)
 
             rate.sleep()
-
+    def velocity_update(self, closer_waypoint,idx):
+        if self.stop_wayoint > 0 :
+	#distance_to_stopLine = self.distance(self.base_waypoints.waypoints, closer_waypoint, self.stop_wayoint)
+            carpose = self.base_waypoints.waypoints[closer_waypoint].pose.pose.position
+            ltpos =  self.base_waypoints.waypoints[self.stop_wayoint].pose.pose.position
+            distance_to_stopLine = self.eucledien_distance(carpose.x,carpose.y,carpose.z,ltpos.x,ltpos.y,ltpos.z)
+            #rospy.loginfo("Distance: %d", distance_to_stopLine)
+            if(distance_to_stopLine < 100):
+                dropVelRatioAhead = distance_to_stopLine/ (100)
+                self.set_waypoint_velocity(self.base_waypoints.waypoints, idx,  (dropVelRatioAhead * self.initial_velocity))
+                if distance_to_stopLine > 60 :
+                    print (distance_to_stopLine,(dropVelRatioAhead * self.initial_velocity))
+		if (distance_to_stopLine < 60):
+		    dropVelRatioActual = distance_to_stopLine/ (100 + distance_to_stopLine)
+	            self.set_waypoint_velocity(self.base_waypoints.waypoints, idx,  (dropVelRatioActual * self.initial_velocity))
+                    print (distance_to_stopLine,(dropVelRatioActual * self.initial_velocity))
+		if(distance_to_stopLine < 3):
+	            dropVelRatioEmrgency = 0
+	            self.set_waypoint_velocity(self.base_waypoints.waypoints, idx,  (dropVelRatioEmrgency * self.initial_velocity))    
+			    
+        else:
+            self.previousVelocity = self.initial_velocity
+            self.set_waypoint_velocity(self.base_waypoints.waypoints, idx, (self.initial_velocity) )
     """
     @ Brief
     ***************************************************************************
@@ -100,8 +126,8 @@ class WaypointUpdater(object):
         initial_wp = closer_waypoint
         final_wp   = closer_waypoint + LOOKAHEAD_WPS
 
-	rospy.loginfo("closer_waypoint: %d", closer_waypoint)
-
+	#rospy.loginfo("closer_waypoint: %d", closer_waypoint)
+        
         for i in range(initial_wp, final_wp):
             idx = i % self.wp_num
             ### NOTE: Here we update the velovity for each waypoint to make it move it
@@ -110,12 +136,14 @@ class WaypointUpdater(object):
             ### using the method of the class
 	    
             self.set_waypoint_velocity(self.base_waypoints.waypoints, idx, self.initial_velocity )
-
+            self.velocity_update(closer_waypoint,idx)
             trajectory_waypoints.waypoints.append(self.base_waypoints.waypoints[idx])
 
         return trajectory_waypoints
 
-
+    def eucledien_distance(self,refx,refy,refz,curx,cury,curz):
+        distance = math.sqrt((curx - refx) ** 2 + (cury - refy) ** 2 + (curz - refz) ** 2)
+	return distance
     """
     @ Brief
     ***************************************************************************
@@ -207,16 +235,16 @@ class WaypointUpdater(object):
     def waypoints_cb(self, msg):
 
         self.base_waypoints_flag = True
-
         self.base_waypoints = msg
         self.wp_num = len(msg.waypoints)
+
 
     def twist_cb(self, msg):
         self.current_twist = msg
 
     def traffic_cb(self, msg):
         # TODO: Callback for /traffic_waypoint message. Implement
-        pass
+        self.stop_wayoint = msg.data
 
     def obstacle_cb(self, msg):
         # TODO: Callback for /obstacle_waypoint message. We will implement it later

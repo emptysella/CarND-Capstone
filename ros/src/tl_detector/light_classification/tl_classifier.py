@@ -16,6 +16,7 @@ class TLClassifier(object):
             int: ID of traffic light color (specified in styx_msgs/TrafficLight)
 
         """
+		# Colour converstion from BGR to HSV 
         Luma  = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
         light_type = self.classifyTL(Luma)
         return light_type
@@ -23,35 +24,49 @@ class TLClassifier(object):
 
     def classifyTL(self, image_data):
         # get the image center geometry
-	blocksize = 64 # 64x64 block size
-	stride = 32
+	blocksize = 96 # 64x64 block size
+	stride = blocksize/ 2
         nredcircles = 0
         nyellowcircles = 0
         ngreencircles = 0
-        for row in xrange(image_data.shape[0]/4, (image_data.shape[0] - stride), stride):
-            for col in xrange(0, ((image_data.shape[1]/2) - stride), stride):
-                Roi = image_data[row:row + blocksize, col:col + blocksize]
-                redImageLowTh = cv2.inRange(Roi, np.array([0, 100, 100]), np.array([10, 255, 255]))
-                redImageHighTh = cv2.inRange(Roi, np.array([150, 100, 100]), np.array([179, 255, 255]))
-                yellowImage = cv2.inRange(Roi, np.array([20, 100, 100]), np.array([40, 255, 255]))
-                greenImage = cv2.inRange(Roi, np.array([37, 38, 70]), np.array([85, 255, 200]));
-                redpixelimage = cv2.addWeighted(redImageLowTh, 1.0, redImageHighTh, 1.0, 0.0)
-                redpixelimage = cv2.GaussianBlur(redpixelimage,(9, 9), 2, 2)
-                yellowImage = cv2.GaussianBlur( yellowImage, (9, 9), 2, 2)
-                greenImage = cv2.GaussianBlur(greenImage, (9, 9), 2, 2)
-                redcircles = cv2.HoughCircles(redpixelimage, cv2.HOUGH_GRADIENT, 1, 20,param1=100,param2=30,minRadius=0,maxRadius=blocksize)
-                yellowcircles = cv2.HoughCircles(yellowImage, cv2.HOUGH_GRADIENT, 1, 20,param1=100,param2=30,minRadius=0,maxRadius=blocksize)
-                greencircles = cv2.HoughCircles(greenImage, cv2.HOUGH_GRADIENT, 1, 20,param1=100,param2=30,minRadius=0,maxRadius=blocksize)
-                if redcircles is not None:
+        # Threshold  colors for HSV block to exact red high , red low  and yellow block bit masks
+        redImageLowTh = cv2.inRange(image_data, np.array([0, 100, 100]), np.array([10, 255, 255]))
+        redImageHighTh = cv2.inRange(image_data, np.array([150, 100, 100]), np.array([179, 255, 255]))
+        yellowImage = cv2.inRange(image_data, np.array([20, 100, 100]), np.array([40, 255, 255]))
+        nprocessblockrows = (image_data.shape[0]) - (image_data.shape[0]/4)
+        #Loop through each 64x64 block in selected ROI 
+        for row in xrange(0, (nprocessblockrows), stride):
+            for col in xrange((image_data.shape[1]/4), ((image_data.shape[1]) - stride), stride):
+		#Extract block data for detection of colors 
+                YellowRoi = yellowImage[row:row + blocksize, col:col + blocksize]
+                RedHRoi = redImageHighTh[row:row + blocksize, col:col + blocksize]
+                RedLRoi = redImageLowTh[row:row + blocksize, col:col + blocksize]
+				
+                #combine high and low range red circle masks to single bit mask 
+                RedROImask = cv2.addWeighted(RedLRoi, 1.0, RedHRoi, 1.0, 0.0)
+				
+		#Apply gaussian blur filter on each color bit masks to remove unwanted noise and Apply Hough circle detection on each induvisual masks to get count of number of circles
+                redcircles = None
+                yellowcircles = None 
+                # optimization to reduce processing time check any red pixel before applying hough circles               
+		Ysum = np.sum(YellowRoi)
+                Rsum = np.sum(RedROImask)
+		if Rsum > 0 :
+		    RedROImask = cv2.GaussianBlur(RedROImask,(9, 9), 2, 2)
+                    redcircles = cv2.HoughCircles(RedROImask, cv2.HOUGH_GRADIENT, 1, 20,param1=100,param2=25,minRadius=0,maxRadius=blocksize)
+
+                if Ysum > 0 :
+                    YellowRoi = cv2.GaussianBlur( YellowRoi, (9, 9), 2, 2)
+		    yellowcircles = cv2.HoughCircles(YellowRoi, cv2.HOUGH_GRADIENT, 1, 20,param1=100,param2=25,minRadius=0,maxRadius=blocksize)    
+                               
+		#Count number of circles detected in each bit masks
+		if redcircles is not None:
                     nredcircles = nredcircles + len(redcircles)
         
                 if yellowcircles is not None:
                     nyellowcircles = nyellowcircles + len(yellowcircles)
 
-                if greencircles is not None:
-                    ngreencircles = ngreencircles + len(greencircles)
-
-        # perform simple brightness comparisons and print for humans
+        # classify color of detected circles based on number of circles detected 
         print(nredcircles,nyellowcircles,ngreencircles)
         if (nredcircles > 0) and (nredcircles > nyellowcircles):
             rospy.loginfo("TrafficLight: RED-STOP")
@@ -59,9 +74,6 @@ class TLClassifier(object):
         elif (nyellowcircles > 0) and (nyellowcircles > nredcircles):
             rospy.loginfo("TrafficLight: YELLOW-SLOW")
             return TrafficLight.YELLOW
-        elif (ngreencircles > 0):
-            rospy.loginfo("TrafficLight: GREEN-GO")
-            return TrafficLight.GREEN
         else:
 	    rospy.loginfo("TrafficLight: UNKNOWN")
             return TrafficLight.UNKNOWN
