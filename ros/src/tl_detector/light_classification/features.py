@@ -88,12 +88,12 @@ def extract_features(
     img_shuffle = shuffle(imgs, random_state=42)
     endRange = len(img_shuffle)
 
-    for idx in range(0,endRange):
+    for idx in range(0,700):
 
         imagePath = img_shuffle[idx]
         # Read in each one by one
         imageA = mpimg.imread(imagePath)
-        image = cv2.resize(imageA, (64,64))
+        image = cv2.resize(imageA, (128,64))
 
 
         # apply color conversion if other than 'RGB'

@@ -19,8 +19,8 @@ Extrator Module
 """
 
 # Reading images from folder
-ImagesClassA  = glob.glob('/Users/esevalero/Desktop/UDACITY_TERM3/semaphor/class_A/*.png')
-ImagesClassB  = glob.glob('/Users/esevalero/Desktop/UDACITY_TERM3/semaphor/class_B/*.png')
+ImagesClassA  = glob.glob('/Users/esevalero/Desktop/tl_classifier_exceptsmall/clase_semaforo/*.png')
+ImagesClassB  = glob.glob('/Users/esevalero/Desktop/tl_classifier_exceptsmall/clase_no_semaforo/*.jpg')
 
 
 # extract features
