@@ -178,7 +178,8 @@ class TLClassifier_SRG():
         svc = pickle.load( open("model.pkl", "rb" ) )
         X_scaler = pickle.load( open("scaler.pkl", "rb" ) )
 
-        frame = cv2.cvtColor(image_data, cv2.COLOR_BGR2RGB)
+        #frame = cv2.cvtColor(image_data, cv2.COLOR_BGR2RGB)
+        frame = image_data
 
         heat = np.zeros_like(frame[:,:,0]).astype(np.float)
         draw_img = np.copy(frame)
@@ -190,7 +191,7 @@ class TLClassifier_SRG():
                        (200, 328, 2.2)]
         """
         
-        parameters = [ (150, 278, 1.0)]
+        parameters = [ (0, 128, 1.0)]
 
         DETECTIONS = []
         for ystart, ystop, scale in parameters:
