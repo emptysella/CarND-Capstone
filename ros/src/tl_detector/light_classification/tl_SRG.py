@@ -8,7 +8,7 @@ import cv2
 import numpy as np
 import features
 
-class TLClassifier_SRG(object):
+class TLClassifier_SRG():
 
     def __init__(self):
         self.blocksize = 96
@@ -87,7 +87,8 @@ class TLClassifier_SRG(object):
         cells_per_step = 2  # Instead of overlap, define how many cells to step
         nxsteps = (nxblocks - nblocks_per_window) // cells_per_step
         nysteps = (nyblocks - nblocks_per_window) // cells_per_step
-
+        nysteps = 16
+        
         # Compute individual channel HOG features for the entire image
         hog1 = features.get_hog_features(ch1, orient, pix_per_cell, cell_per_block)
         hog2 = features.get_hog_features(ch2, orient, pix_per_cell, cell_per_block)
@@ -114,7 +115,14 @@ class TLClassifier_SRG(object):
 
                 # Extract the image patch
                 #---------------------------------------------------------------
-                subimg = cv2.resize(ctrans_tosearch[ytop:ytop+window, xleft:xleft+window], (64,64))
+                window_H = 128
+                subimg = cv2.resize(ctrans_tosearch[ytop:ytop+window_H, xleft:xleft+window], (128,64))
+                
+                
+                hog1_ = features.get_hog_features(subimg[:,:,0], orient, pix_per_cell, cell_per_block).ravel()
+                hog2_ = features.get_hog_features(subimg[:,:,1], orient, pix_per_cell, cell_per_block).ravel()
+                hog3_ = features.get_hog_features(subimg[:,:,2], orient, pix_per_cell, cell_per_block).ravel()
+                hog_features_ = np.hstack((hog1_, hog2_, hog3_))
 
                 # Get color features
                 #---------------------------------------------------------------
@@ -123,7 +131,7 @@ class TLClassifier_SRG(object):
 
                 # Scale features and make a prediction
                 #---------------------------------------------------------------
-                test_features = X_scaler.transform(np.hstack((spatial_features, hist_features, hog_features)).reshape(1, -1))
+                test_features = X_scaler.transform(np.hstack((spatial_features, hist_features, hog_features_)).reshape(1, -1))
 
                 #---------------------------------------------------------------
                 test_prediction = svc.predict(test_features)
@@ -167,8 +175,8 @@ class TLClassifier_SRG(object):
         spatial_size, hist_bins = (64, 64), 128
 
         # Predictor Parameters
-        svc = pickle.load( open("./train_smaphore_detector/model.pkl", "rb" ) )
-        X_scaler = pickle.load( open("./train_smaphore_detector/scaler.pkl", "rb" ) )
+        svc = pickle.load( open("model.pkl", "rb" ) )
+        X_scaler = pickle.load( open("scaler.pkl", "rb" ) )
 
         frame = cv2.cvtColor(image_data, cv2.COLOR_BGR2RGB)
 
@@ -176,13 +184,17 @@ class TLClassifier_SRG(object):
         draw_img = np.copy(frame)
 
         #### PARAMETER TO TUNE #################################################
-        parameters = [ (400, 500, 1.0),
-                       (400, 550, 1.5),
-                       (400, 700, 2.2)]
+        """
+        parameters = [ (150, 278, 1.0),
+                       (200, 328, 1.5),
+                       (200, 328, 2.2)]
+        """
+        
+        parameters = [ (150, 278, 1.0)]
 
         DETECTIONS = []
         for ystart, ystop, scale in parameters:
-            out_img, box_list, bbList = self.find_semaphore(   C_frames,
+            out_img, box_list, bbList = self.find_semaphore(    frame,
                                                                 ystart,
                                                                 ystop,
                                                                 scale,
