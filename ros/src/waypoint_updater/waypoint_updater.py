@@ -289,8 +289,7 @@ class WaypointUpdater(object):
         self.base_waypoints = msg
         self.wp_num = len(msg.waypoints)
         self.destination =self.wp_num - 1
-	self.MaxVelocity = 10 #self.base_waypoints.waypoints[self.wp_num/2].twist.twist.linear.x
-		# If simulator, use longer queue and halt at destination
+	# If simulator, use longer queue and halt at destination
         if self.stop_distance < self.velocityDrop:
             LOOKAHEAD_WPS = 20 + self.stop_distance
             self.loop = False # comment this line to loop in simulator
