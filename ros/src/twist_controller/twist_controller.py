@@ -12,7 +12,7 @@ class Controller(object):
         # TODO: Implement
 	wheel_base = kwargs["wheel_base"]
 	steer_ratio = kwargs["steer_ratio"]
-	self.min_speed = 5.0
+	self.min_speed = 0.0
 	max_lat_accel = kwargs["max_lat_accel"]
 	max_steer_angle = kwargs["max_steer_angle"]
 	decel_limit = kwargs["decel_limit"]

@@ -73,7 +73,11 @@ class WaypointUpdater(object):
         self.replan         = True  # when a light changes, update velocity
         self.loop           = True  # loop around the test site (updated by waypoints_cb)
         self.velocityDrop  = 100.   # distance to begin reducing velocity
-        self.MaxVelocity   = 2.777 # mps Carla max of 10 km/h (updated by waypoints_cb)
+        #self.MaxVelocity   = 2.777 # mps Carla max of 10 km/h (updated by waypoints_cb)
+	
+	# read velocity (in km/h) from the waypoint_loader param and converts it to m/s (default: 10 km/h as Carla's  value)
+        self.MaxVelocity = rospy.get_param('/waypoint_loader/velocity', 10.0) / 3.6
+
         # Vehicle Pose variables
         self.car_pose_x = 0.0
         self.car_pose_y = 0.0
@@ -104,6 +108,7 @@ class WaypointUpdater(object):
 
                 # STAGE 1. find closer Waypoint to the car
                 closer_waypoint = self.closer_waypoint()
+		#rospy.loginfo("Closer waypoint: %d", closer_waypoint)
 
                 # STAGE 2. Popullate waypoints trajectory buffer
                 trajectory_waypoints = self.populate_trajectory(closer_waypoint)
@@ -163,6 +168,7 @@ class WaypointUpdater(object):
 
         for i in range(initial_wp, final_wp):
             idx = i % self.wp_num
+	    #rospy.loginfo("wp_num: %d - i: %d - idx: %d", self.wp_num, i, idx)
             ### NOTE: Here we update the velovity for each waypoint to make it move it
             ### Alternative way to do it
             self.velocity_update(closer_waypoint,idx)
@@ -202,7 +208,8 @@ class WaypointUpdater(object):
         car_pos_y = self.current_pose.pose.position.y
         car_pose = np.array((car_pos_x, car_pos_y))
 
-        distance = np.linalg.norm(init_wp - car_pose)
+        #distance = np.linalg.norm(init_wp - car_pose)
+	distance = math.sqrt((init_wp_x-car_pos_x)**2 + (init_wp_y-car_pos_y)**2)
 
         wp_index = 0
         all_wp_lenght = len(self.base_waypoints.waypoints)
@@ -214,7 +221,8 @@ class WaypointUpdater(object):
             curr_wp_y = self.base_waypoints.waypoints[i].pose.pose.position.y
             current_waypoint = np.array((curr_wp_x,curr_wp_y))
 
-	    dist = np.linalg.norm(current_waypoint - car_pose)
+	    #dist = np.linalg.norm(current_waypoint - car_pose)
+	    dist = math.sqrt((curr_wp_x-car_pos_x)**2 + (curr_wp_y-car_pos_y)**2)
 	    if (dist < min_dist):
 		min_dist = dist
 		wp_index = i
