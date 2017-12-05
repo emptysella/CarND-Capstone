@@ -47,7 +47,8 @@ class WaypointUpdater(object):
         self.base_waypoints_flag = False
         self.current_pose_flag  = False
 
-        self.initial_velocity = 5.0
+	# read velocity (in km/h) from the waypoint_loader param and converts it to m/s (10 km/h as default value)
+        self.initial_velocity = rospy.get_param('/waypoint_loader/velocity', 10.0) / 3.6
         self.stop_wayoint  = 0
 
         # Vehicle Pose variables
@@ -80,6 +81,7 @@ class WaypointUpdater(object):
 
                 # STAGE 1. find closer Waypoint to the car
                 closer_waypoint = self.closer_waypoint()
+		#rospy.loginfo("Closer waypoint: %d", closer_waypoint)
 
                 # STAGE 2. Popullate waypoints trajectory buffer
                 trajectory_waypoints = self.populate_trajectory(closer_waypoint)
@@ -90,7 +92,8 @@ class WaypointUpdater(object):
             rate.sleep()
     def velocity_update(self, closer_waypoint,idx):
         if self.stop_wayoint > 0 :
-	#distance_to_stopLine = self.distance(self.base_waypoints.waypoints, closer_waypoint, self.stop_wayoint)
+	    #distance_to_stopLine = self.distance(self.base_waypoints.waypoints, closer_waypoint, self.stop_wayoint)
+	    #rospy.loginfo("IF")
             carpose = self.base_waypoints.waypoints[closer_waypoint].pose.pose.position
             ltpos =  self.base_waypoints.waypoints[self.stop_wayoint].pose.pose.position
             distance_to_stopLine = self.eucledien_distance(carpose.x,carpose.y,carpose.z,ltpos.x,ltpos.y,ltpos.z)
@@ -109,6 +112,7 @@ class WaypointUpdater(object):
 	            self.set_waypoint_velocity(self.base_waypoints.waypoints, idx,  (dropVelRatioEmrgency * self.initial_velocity))
 
         else:
+	    #rospy.loginfo("ELSE")
             self.previousVelocity = self.initial_velocity
             self.set_waypoint_velocity(self.base_waypoints.waypoints, idx, (self.initial_velocity) )
     """
@@ -126,10 +130,11 @@ class WaypointUpdater(object):
         initial_wp = closer_waypoint
         final_wp   = closer_waypoint + LOOKAHEAD_WPS
 
-	#rospy.loginfo("closer_waypoint: %d", closer_waypoint)
+	rospy.loginfo("closer_waypoint: %d", closer_waypoint)
 
         for i in range(initial_wp, final_wp):
             idx = i % self.wp_num
+	    #rospy.loginfo("wp_num: %d - i: %d - idx: %d", self.wp_num, i, idx)
             ### NOTE: Here we update the velovity for each waypoint to make it move it
             ### Alternative way to do it
             ### trajectory_waypoints.waypoints[idx].twist.twist.linear.x = self.initial_velocity
@@ -138,6 +143,7 @@ class WaypointUpdater(object):
             self.set_waypoint_velocity(self.base_waypoints.waypoints, idx, self.initial_velocity )
             self.velocity_update(closer_waypoint,idx)
             trajectory_waypoints.waypoints.append(self.base_waypoints.waypoints[idx])
+	    #rospy.loginfo("adding waypoint-> x: %f - y: %f", self.base_waypoints.waypoints[idx].pose.pose.position.x, self.base_waypoints.waypoints[idx].pose.pose.position.y)
 
         return trajectory_waypoints
 
@@ -176,16 +182,17 @@ class WaypointUpdater(object):
         distance = np.linalg.norm(init_wp - car_pose)
 
         wp_index = 0
-        all_wp_lenght = len(self.base_waypoints.waypoints)
+        #all_wp_lenght = len(self.base_waypoints.waypoints)
 	#rospy.loginfo("all_wp_lenght: %d", all_wp_lenght)
 	min_dist = float('inf')
-        for i in range( 1, all_wp_lenght):
+        for i in range( 1, self.wp_num):
 
             curr_wp_x = self.base_waypoints.waypoints[i].pose.pose.position.x
             curr_wp_y = self.base_waypoints.waypoints[i].pose.pose.position.y
             current_waypoint = np.array((curr_wp_x,curr_wp_y))
 
-	    dist = np.linalg.norm(current_waypoint - car_pose)
+	    #dist = np.linalg.norm(current_waypoint - car_pose)
+	    dist = math.sqrt((curr_wp_x-car_pos_x)**2 + (curr_wp_y-car_pos_y)**2)
 	    if (dist < min_dist):
 		min_dist = dist
 		wp_index = i
@@ -205,7 +212,7 @@ class WaypointUpdater(object):
         if orientation_alignement > np.pi/2.0:
             wp_index += 1
         # sanity check: control if we already are in the last wp
-        if wp_index >= all_wp_lenght:
+        if wp_index >= self.wp_num:
             wp_index = 0
 
         return wp_index

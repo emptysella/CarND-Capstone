@@ -92,7 +92,7 @@ class DBWNode(object):
             #                                                     <any other argument you need>)
             # if <dbw is enabled>:
 	    
-	    #rospy.loginfo("%f",self.current_linear_velocity)
+	    rospy.loginfo("current velocity: %f --- target velocity: %f",self.current_linear_velocity, self.target_linear_velocity)
 	    throttle, brake, steer = self.controller.control(self.target_linear_velocity, self.target_angular_velocity, self.current_linear_velocity, self.dbwenabled)
 	    if self.dbwenabled:            	
 		self.publish(throttle, brake, steer)
@@ -120,12 +120,12 @@ class DBWNode(object):
 	self.current_linear_velocity = msg.twist.linear.x
 	self.current_angular_velocity = msg.twist.angular.z
 	# TODO: calculate current steering value using yaw_controller.py 
-    	rospy.loginfo("[/current_velocity] Linear velocity:    %f"%(self.current_linear_velocity))
+    	#rospy.loginfo("[/current_velocity] Linear velocity:    %f"%(self.current_linear_velocity))
 	#rospy.loginfo("[/current_velocity] Angular velocity:   %f"%(self.current_angular_velocity))
 
     def read_target_velocity(self, msg):
 	#rospy.loginfo("[/twist_cmd]        Header:             [%s, %s, %s]"%(msg.header.seq, msg.header.stamp, msg.header.frame_id))
-        rospy.loginfo("[/twist_cmd]        Linear Components:  [%f, %f, %f]"%(msg.twist.linear.x, msg.twist.linear.y, msg.twist.linear.z))
+        #rospy.loginfo("[/twist_cmd]        Linear Components:  [%f, %f, %f]"%(msg.twist.linear.x, msg.twist.linear.y, msg.twist.linear.z))
         #rospy.loginfo("[/twist_cmd]        Angular Components: [%f, %f, %f]"%(msg.twist.angular.x, msg.twist.angular.y, msg.twist.angular.z))
 	self.target_linear_velocity = msg.twist.linear.x
 	self.target_angular_velocity = msg.twist.angular.z
