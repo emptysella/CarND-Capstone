@@ -73,7 +73,6 @@ class WaypointUpdater(object):
         self.replan         = True  # when a light changes, update velocity
         self.loop           = True  # loop around the test site (updated by waypoints_cb)
         self.velocityDrop  = 100.   # distance to begin reducing velocity
-        #self.MaxVelocity   = 2.777 # mps Carla max of 10 km/h (updated by waypoints_cb)
 	
 	# read velocity (in km/h) from the waypoint_loader param and converts it to m/s (default: 10 km/h as Carla's  value)
         self.MaxVelocity = rospy.get_param('/waypoint_loader/velocity', 10.0) / 3.6
@@ -117,6 +116,7 @@ class WaypointUpdater(object):
                 self.final_waypoints_pub.publish(trajectory_waypoints)
 
             rate.sleep()
+
     def velocity_update(self, closer_waypoint,idx):
 	    #self.base_waypoints.waypoints[idx].twist.twist.linear.x = self.MaxVelocity
             distance_to_stopline = self.stop_distance
@@ -148,6 +148,10 @@ class WaypointUpdater(object):
                     self.base_waypoints.waypoints[idx].twist.twist.linear.x = (velocity)
                 else:    
                     self.base_waypoints.waypoints[idx].twist.twist.linear.x = self.MaxVelocity
+
+	    # limiting velocity to MaxVelocity
+	    if (self.base_waypoints.waypoints[idx].twist.twist.linear.x > self.MaxVelocity):
+		self.base_waypoints.waypoints[idx].twist.twist.linear.x = self.MaxVelocity
 
     """
     @ Brief
@@ -209,7 +213,8 @@ class WaypointUpdater(object):
         car_pose = np.array((car_pos_x, car_pos_y))
 
         #distance = np.linalg.norm(init_wp - car_pose)
-	distance = math.sqrt((init_wp_x-car_pos_x)**2 + (init_wp_y-car_pos_y)**2)
+	#distance = math.sqrt((init_wp_x-car_pos_x)**2 + (init_wp_y-car_pos_y)**2)
+	distance = self.eucledien_distance(init_wp_x, init_wp_y, 0, car_pos_x, car_pos_y, 0)
 
         wp_index = 0
         all_wp_lenght = len(self.base_waypoints.waypoints)
@@ -222,7 +227,8 @@ class WaypointUpdater(object):
             current_waypoint = np.array((curr_wp_x,curr_wp_y))
 
 	    #dist = np.linalg.norm(current_waypoint - car_pose)
-	    dist = math.sqrt((curr_wp_x-car_pos_x)**2 + (curr_wp_y-car_pos_y)**2)
+	    #dist = math.sqrt((curr_wp_x-car_pos_x)**2 + (curr_wp_y-car_pos_y)**2)
+	    dist = self.eucledien_distance(curr_wp_x, curr_wp_y, 0, car_pos_x, car_pos_y, 0)
 	    if (dist < min_dist):
 		min_dist = dist
 		wp_index = i
