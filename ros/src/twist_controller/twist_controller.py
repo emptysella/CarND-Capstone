@@ -18,18 +18,26 @@ class Controller(object):
 	decel_limit = kwargs["decel_limit"]
 	accel_limit = kwargs["accel_limit"]
 	self.sample_rate = kwargs["sample_rate"]
-	self.pid = PID(1.0, 0.012, 0.1, decel_limit, accel_limit)
+	#self.pid = PID(3, 2, 0.5, decel_limit, accel_limit) # ku = 5, Tu = 4
+	self.pid_lowvel = PID(1, 0.5, 0.1, decel_limit, accel_limit) 		# PID for 10 kph
+	self.pid_highvel = PID(1.0, 0.012, 0.1, decel_limit, accel_limit) 	# PID for 40 kph	
 	self.yaw_controller = YawController(wheel_base, steer_ratio, self.min_speed, max_lat_accel, max_steer_angle)
-	self.filter_steer = LowPassFilter(0.1, 0.2)
-	self.filter_throttlebrake = LowPassFilter(0.2, 0.1)
+	self.filter_steer = LowPassFilter(50)
+	#self.filter_throttlebrake = LowPassFilter(50)
+	self.LOWVEL_LIMIT = 15/3.6  # 15 kph is the limit between using on PID over the other
 
     def control(self, target_linear_velocity, target_angular_velocity, current_linear_velocity, dbwenabled):
         # TODO: Change the arg, kwarg list to suit your needs
         # Return throttle, brake, steer
 	if (not dbwenabled):
-		self.pid.reset()
-	throttle_brake = self.pid.step(target_linear_velocity - current_linear_velocity, 1.0/self.sample_rate)
-	throttle_brake = self.filter_throttlebrake.filt(throttle_brake)
+		self.pid_lowvel.reset()
+		self.pid_highvel.reset()
+	if (target_linear_velocity <= self.LOWVEL_LIMIT):
+		pid = self.pid_lowvel
+	else:
+		pid = self.pid_highvel
+	throttle_brake = pid.step(target_linear_velocity - current_linear_velocity, 1.0/self.sample_rate)
+	#throttle_brake = self.filter_throttlebrake.filt(throttle_brake)
 	throttle = max(throttle_brake, 0)
 	brake = min(throttle_brake, 0)
 	steer = self.yaw_controller.get_steering(target_linear_velocity, target_angular_velocity, current_linear_velocity)

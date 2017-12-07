@@ -92,12 +92,51 @@ class DBWNode(object):
             #                                                     <any other argument you need>)
             # if <dbw is enabled>:
 	    
-	    #rospy.loginfo("%f",self.current_linear_velocity)
-	    rospy.loginfo("current velocity: %f --- target velocity: %f",self.current_linear_velocity, self.target_linear_velocity)
+	    #rospy.loginfo("current velocity: %f --- target velocity: %f",self.current_linear_velocity, self.target_linear_velocity)
 	    throttle, brake, steer = self.controller.control(self.target_linear_velocity, self.target_angular_velocity, self.current_linear_velocity, self.dbwenabled)
+	    
+	    #self.graph_error(self.target_linear_velocity, self.current_linear_velocity)
+	    """
+	    if not self.dbwenabled:
+		error_sum = 0
+		error_count = 0
+	    if self.dbwenabled:
+		rospy.loginfo("%d - error: %f", error_count, self.target_linear_velocity - self.current_linear_velocity)
+		#rospy.loginfo("")
+		error_count = error_count + 1
+		error_sum = error_sum + abs(self.target_linear_velocity - self.current_linear_velocity)
+		if (error_count == 500):
+			rospy.loginfo("***************     error mean: %f", error_sum/error_count)
+			error_sum = 0
+			error_count = 0
+	    """
+	
 	    if self.dbwenabled:            	
 		self.publish(throttle, brake, steer)
             rate.sleep()
+
+    def graph_error(self, target, current):
+	error_perc = 0
+	granularity = 1
+        if (target > 0):
+	    error_perc = 100 * (target - current) / target
+	num_elem = abs(int(error_perc / granularity))
+	#bar = str(error_perc) + ' - '
+	bar = ''
+	if (error_perc < 0):
+	    for x in range (0, 100/granularity-num_elem):
+		bar = bar + ' '
+	    for x in range (100/granularity-num_elem+1, 100/granularity):
+		bar = bar + '<'
+	    bar = bar + '*'
+	if (error_perc > 0):
+	    for x in range (0, 100/granularity):
+		bar = bar + ' '
+	    bar = bar + '*'
+	    for x in range (0, num_elem):
+		bar = bar + '>'
+	rospy.loginfo(bar)
+	
 
     def publish(self, throttle, brake, steer):
         tcmd = ThrottleCmd()
