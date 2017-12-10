@@ -37,7 +37,7 @@ class Controller(object):
             throttle = self.filter_throttlebrake.filt(throttle)
         elif throttle_brake < -self.deadband:
             throttle = 0.
-            brake = -throttle_brake
+            #brake = -throttle_brake
 
 	steer = self.yaw_controller.get_steering(target_linear_velocity, target_angular_velocity, current_linear_velocity)
         # handling boundary conditions for steer  based on deadband  
