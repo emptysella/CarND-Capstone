@@ -1,8 +1,7 @@
 from styx_msgs.msg import TrafficLight
 
-import tl_SWRP 
-import tl_SRG
-
+import tl_simulator_mode
+import tl_carla_mode
 
 
 
@@ -14,8 +13,8 @@ class TLClassifier(object):
          
          self.mode = 'SIMULATOR'
          
-         self.classifier_SIMULATOR  = tl_SWRP.TLClassifier_SWRP()
-         self.classifier_CARLA      = tl_SRG.TLClassifier_SRG()
+         self.classifier_SIMULATOR  = tl_simulator_mode.TLClassifier_SWRP()
+         self.classifier_CARLA      = tl_carla_mode.TLClassifier_SRG()
 
 
          
@@ -63,6 +62,7 @@ class TLClassifier(object):
                 # RUN
                 light = TrafficLight.GREEN
                       
+
 
         # return light
         return light

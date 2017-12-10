@@ -70,8 +70,16 @@ class TLClassifier():
 
 
 
+"""
+******************************************************************************
 
-#******************************************************************************
+This is a off-line test of the SIMULATOR mode
+In this file you can finad an exact copy of the classifier 
+
+
+To run the script unzip the validation_images.zip in the same folder that the script
+
+"""
 
 
 TL = TLClassifier()
