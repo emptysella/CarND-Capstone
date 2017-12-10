@@ -1,19 +1,9 @@
 import sys
 sys.path.insert(0,'./training')
 import features
-import matplotlib.image as mpimg
-import matplotlib.pyplot as plt
 import pickle
-import math
-import glob
 import cv2
 import numpy as np
-
-import tl_SWRP
-import cv2
-from scipy.ndimage.measurements import label
-
-
 
 
 
@@ -97,12 +87,6 @@ class TLClassifier_SRG():
                         hist_bins,
                         draw_img
                       ):
-        
-        
-
-        svc_hsv = pickle.load( open("./training/models/model_classifier.pkl", "rb" ) )
-        X_scaler_hsv = pickle.load( open("./training/models/scaler_classifier.pkl", "rb" ) )       
-        
 
         img_tosearch = img[ystart:ystop,:,:]
         img_raw = img[ystart:ystop,:,:]

@@ -1,7 +1,7 @@
 import cv2
-import tl_SWRP 
-import tl_SRG
-import numpy as np
+import tl_simulator_mode
+import tl_carla_mode
+
 
 
 class TLClassifier():
@@ -9,81 +9,63 @@ class TLClassifier():
     def __init__(self):
         
          print("classification statrted...")
+         
+         self.GREEN = 'RUN'
+         self.RED   = 'STOP'
+         
+         self.mode =  'CARLA'   # 'SIMULATOR' or 'CARLA'
+         
+         self.classifier_SIMULATOR  = tl_simulator_mode.TLClassifier_SWRP()
+         self.classifier_CARLA      = tl_carla_mode.TLClassifier_SRG()
 
-         self.UNKNOWN  = 'unknow'
-         self.GREEN    = 'green'
-         self.YELLOW   = 'yellow'
-         self.RED      = 'red'
 
-
-    def run(self, image):
-        """Determines the color of the traffic light in the image
-
-        Args:
-            image (cv::Mat): image containing the traffic light
-
-        Returns:
-            int: ID of traffic light color (specified in styx_msgs/TrafficLight)
-
+         
+    def get_classification(self, image):
+        
         """
-        TL_SWRP = tl_SWRP.TLClassifier_SWRP()
-        TL_SRG  = tl_SRG.TLClassifier_SRG()
-        # sanity check initialization
-        light = self.UNKNOWN
+        Determines the color of the traffic light in the image
 
-
+            Args:       image (cv::Mat): image containing the traffic light
+            Returns:    int: ID of traffic light color (specified in styx_msgs/TrafficLight)           
         """
-        Run the classifier of Sergio
+        
+        
+        """
+        Classifier in Mode Carla 
         _______________________________________________________________________
         """
-        light_out = TL_SRG.classifyTL(image)
-        
-        if light_out:
-            print("STOP")
-        else:
-            print("RUN")
+        if self.mode == 'CARLA' :
+            
+            light_out = self.classifier_CARLA.classifyTL(image)
+            
+            if light_out:
+                light = self.RED
+                print("STOP")
+            else:
+                light = self.GREEN
+                print("RUN")
             
             
-        #boundingBox = image[crop[1]:crop[3],crop[0]:crop[2],:]*255
-        #cv2.imwrite('draw_crop.jpg'  ,boundingBox)
-        
-
         """
-        Run the classifier of Swaroop
+        Classifier in Mode SIMULATOR 
         _______________________________________________________________________
-        """
+        """  
 
-        #light_out = TL_SWRP.classifyTL(boundingBox.astype(np.uint8))
-
-        #print(light_out)
-
-
-
-        """
-        Run the classifier of Felix
-        _______________________________________________________________________
-        """
-
-
-
-        #_______________________________________________________________________
-
-        light_type = light_out
-
-        if light_type == 0:
-            light = self.UNKNOWN
-
-        if light_type == 1:
-            light = self.GREEN
-
-        if light_type == 2:
-            light = self.YELLOW
-
-        if light_type == 3:
-            light = self.RED
+        if self.mode == 'SIMULATOR' :
+            
+            light_out = self.classifier_SIMULATOR.classifyTL(image)
+            
+            if light_out:
+                light = self.RED
+                print("STOP")
+            else:
+                light = self.GREEN
+                print("RUN")          
+                
 
         # return light
         return light
+
 
 
 
@@ -98,9 +80,7 @@ imagePath = 'red_0.png'
 imagePath = 'red_0.png'
 imagePath = '/Volumes/Samsung_T5/MORE_PROJECTS/SDC-System-Integration/test_images/just_traffic_light_0500.jpg'
 
-
 imageA = cv2.imread(imagePath)  # uint8 image
 
-
-TL.run(imageA)
+TL.get_classification(imageA)
     

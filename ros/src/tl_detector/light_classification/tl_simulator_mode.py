@@ -4,7 +4,7 @@ import numpy as np
 class TLClassifier_SWRP(object):
 
     def __init__(self):
-        self.blocksize = 64
+        self.blocksize = 96
 
         """
         light code:
@@ -16,6 +16,9 @@ class TLClassifier_SWRP(object):
         self.light = 0
 
     def classifyTL(self, image):
+        
+        # Initialization to Green Light
+        self.light = 0
 
         # Colour converstion from BGR to HSV
         image_data = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
