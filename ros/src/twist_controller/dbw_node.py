@@ -10,25 +10,19 @@ from twist_controller import Controller
 
 '''
 You can build this node only after you have built (or partially built) the `waypoint_updater` node.
-
 You will subscribe to `/twist_cmd` message which provides the proposed linear and angular velocities.
 You can subscribe to any other message that you find important or refer to the document for list
 of messages subscribed to by the reference implementation of this node.
-
 One thing to keep in mind while building this node and the `twist_controller` class is the status
 of `dbw_enabled`. While in the simulator, its enabled all the time, in the real car, that will
 not be the case. This may cause your PID controller to accumulate error because the car could
 temporarily be driven by a human instead of your controller.
-
 We have provided two launch files with this node. Vehicle specific values (like vehicle_mass,
 wheel_base) etc should not be altered in these files.
-
 We have also provided some reference implementations for PID controller and other utility classes.
 You are free to use them or build your own.
-
 Once you have the proposed throttle, brake, and steer values, publish it on the various publishers
 that we have created in the `__init__` function.
-
 '''
 
 class DBWNode(object):
@@ -69,7 +63,8 @@ class DBWNode(object):
 		'max_steer_angle': max_steer_angle,
 		'decel_limit':     decel_limit,
 		'accel_limit':     accel_limit,
-		'sample_rate':	   self.sample_rate
+		'sample_rate':	   self.sample_rate,
+                'deadband'   :     brake_deadband
 	}
 	self.controller = Controller(**controller_params)
 
@@ -113,6 +108,12 @@ class DBWNode(object):
         bcmd = BrakeCmd()
         bcmd.enable = True
         bcmd.pedal_cmd_type = BrakeCmd.CMD_TORQUE
+        bcmd.pedal_cmd = brake
+
+
+        bcmd.pedal_cmd_type = BrakeCmd.CMD_PERCENT
+        if brake_deadband > 0.1:
+            brake *= 1000  # multiplier for sim
         bcmd.pedal_cmd = brake
         self.brake_pub.publish(bcmd)
 
