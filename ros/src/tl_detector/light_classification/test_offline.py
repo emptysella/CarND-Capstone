@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 import matplotlib.image as mpimg
-import tl_SWRP 
+import tl_SWRP
 import tl_SRG
 
 
@@ -9,8 +9,7 @@ class TLClassifier():
 
     def __init__(self):
          print("classification statrted...")
-
-
+         
          self.UNKNOWN  = 'unknow'
          self.GREEN    = 'green'
          self.YELLOW   = 'yellow'
@@ -92,4 +91,3 @@ TL = TLClassifier()
 imagePath = 'image210.jpg'
 imageA = mpimg.imread(imagePath)
 TL.run(imageA)
-    
