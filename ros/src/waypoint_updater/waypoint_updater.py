@@ -41,7 +41,7 @@ as well as to verify your TL classifier.
 TODO (for Yousuf and Aaron): Stopline location for each traffic light.
 '''
 
-LOOKAHEAD_WPS = 120 # Number of waypoints we will publish. You can change this number
+LOOKAHEAD_WPS = 200 # Number of waypoints we will publish. You can change this number
 
 
 class WaypointUpdater(object):
@@ -63,7 +63,7 @@ class WaypointUpdater(object):
         self.current_pose        = PoseStamped()
         self.current_twist       = TwistStamped()
         self.wp_num              = 0
-
+        self.previousvelocity    = 0.0
         self.base_waypoints_flag = False
         self.current_pose_flag  = False
         self.stop_wayoint  = 0
@@ -95,10 +95,11 @@ class WaypointUpdater(object):
     def publish_trajectory(self):
 
         rate = rospy.Rate(PUBLISHING_RATE)
-
+        
         while not rospy.is_shutdown():
 
             isWaypoints = len(self.base_waypoints.waypoints)
+
             #if( isWaypoints > 0 & self.base_waypoints_flag & self.current_pose_flag):
 	    if( isWaypoints > 0 ):
 
@@ -112,37 +113,49 @@ class WaypointUpdater(object):
                 self.final_waypoints_pub.publish(trajectory_waypoints)
 
             rate.sleep()
-    def velocity_update(self, closer_waypoint,idx):
+    def velocity_update(self, closer_waypoint,idx,count):
 	    #self.base_waypoints.waypoints[idx].twist.twist.linear.x = self.MaxVelocity
+            velocity = 0.0
             distance_to_stopline = self.stop_distance
 	    if not self.loop and self.halt:
                 self.base_waypoints.waypoints[idx].twist.twist.linear.x = 0.
+                self.previousvelocity = 0.0
                 #rospy.loginfo("V1: ")
 
             elif self.stop_wayoint  > 0 :
                 #rospy.loginfo("V2:")
 	        sidx = self.stop_wayoint
-                carpose = self.base_waypoints.waypoints[closer_waypoint].pose.pose.position
-                ltpos =  self.base_waypoints.waypoints[self.stop_wayoint].pose.pose.position
 		
-		if distance_to_stopline <= 2:  # set velocity at or beyond stop line to zero
+		if distance_to_stopline <= 3:  # set velocity at or beyond stop line to zero      
                     #rospy.loginfo("V3: ")
+                    velocity = 0.0
                     self.base_waypoints.waypoints[idx].twist.twist.linear.x = 0.
                 elif distance_to_stopline < self.velocityDrop:
                     velocity = (self.MaxVelocity * distance_to_stopline)/self.velocityDrop
-                    #rospy.loginfo("V4: %f", velocity)
-                    if distance_to_stopline <= 3.0:
-                        velocity = 0.
-                        #rospy.loginfo("V5: ")
                     self.base_waypoints.waypoints[idx].twist.twist.linear.x = velocity
+                self.previousvelocity = velocity
+                
+
             else:
-                #rospy.loginfo("V6: ")
-                if (distance_to_stopline < self.velocityDrop)and (distance_to_stopline > (self.velocityDrop/2)):
+                
+                if (distance_to_stopline < self.velocityDrop)and (distance_to_stopline > (self.velocityDrop/4)):
                     velocity = (self.MaxVelocity * distance_to_stopline)/self.velocityDrop
+                    self.previousvelocity = velocity
                     #rospy.loginfo("V5: %f", velocity)
                     self.base_waypoints.waypoints[idx].twist.twist.linear.x = (velocity)
-                else:    
-                    self.base_waypoints.waypoints[idx].twist.twist.linear.x = self.MaxVelocity
+                elif self.previousvelocity <= (self.MaxVelocity):
+                    if count == 0:
+		        velocity = self.previousvelocity  + 0.5 
+                    else:
+                        velocity = self.previousvelocity
+                    #rospy.loginfo("velocity: %f", velocity)
+                    if velocity < self.MaxVelocity: 
+                        self.previousvelocity = velocity
+                        self.base_waypoints.waypoints[idx].twist.twist.linear.x = velocity    
+                    else :
+                        self.previousvelocity = self.MaxVelocity 
+                        self.base_waypoints.waypoints[idx].twist.twist.linear.x = self.MaxVelocity    
+
 
     """
     @ Brief
@@ -158,15 +171,17 @@ class WaypointUpdater(object):
 
         initial_wp = closer_waypoint
         final_wp   = closer_waypoint + LOOKAHEAD_WPS
-
+        
 	#rospy.loginfo("closer_waypoint: %d", closer_waypoint)
-
+        count = 0
+        #rospy.loginfo("distance: %d",self.stop_distance)
         for i in range(initial_wp, final_wp):
             idx = i % self.wp_num
             ### NOTE: Here we update the velovity for each waypoint to make it move it
             ### Alternative way to do it
-            self.velocity_update(closer_waypoint,idx)
-            trajectory_waypoints.waypoints.append(self.base_waypoints.waypoints[idx])
+            self.velocity_update(closer_waypoint,idx,count)
+            trajectory_waypoints.waypoints.append(self.base_waypoints.waypoints[idx])      
+            count = count + 1
 
         return trajectory_waypoints
 
@@ -219,23 +234,7 @@ class WaypointUpdater(object):
 		min_dist = dist
 		wp_index = i
 
-        ### Stage2
-        ###----------------------------------------------------------------------
-        x_wp = self.base_waypoints.waypoints[wp_index].pose.pose.position.x
-        y_wp = self.base_waypoints.waypoints[wp_index].pose.pose.position.y
-
-        car_wp_orientation = np.arctan2(
-                                        (y_wp - self.car_pose_y) ,
-                                        (x_wp - self.car_pose_x) )
-
-        orientation_alignement = np.abs(self.car_yaw - car_wp_orientation)
-        # check if the car pose is aligned with the car-wp pose
-        # if not aligned, we step forward one wp
-        if orientation_alignement > np.pi/2.0:
-            wp_index += 1
-        # sanity check: control if we already are in the last wp
-        if wp_index >= all_wp_lenght:
-            wp_index = 0
+        
 
         return wp_index
 
