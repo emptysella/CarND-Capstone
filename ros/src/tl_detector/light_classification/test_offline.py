@@ -1,7 +1,8 @@
 import cv2
 import tl_simulator_mode
 import tl_carla_mode
-
+import glob
+import numpy as np
 
 
 class TLClassifier():
@@ -10,8 +11,8 @@ class TLClassifier():
         
          print("classification statrted...")
          
-         self.GREEN = 'RUN'
-         self.RED   = 'STOP'
+         self.GREEN = 1
+         self.RED   = 0
          
          self.mode =  'CARLA'   # 'SIMULATOR' or 'CARLA'
          
@@ -72,15 +73,42 @@ class TLClassifier():
 
 #******************************************************************************
 
+
 TL = TLClassifier()
 
-imagePath = 'green_8.png'
-imagePath = 'image210.jpg'
+"""
 imagePath = 'red_0.png'
-imagePath = 'red_0.png'
-imagePath = '/Volumes/Samsung_T5/MORE_PROJECTS/SDC-System-Integration/test_images/just_traffic_light_0500.jpg'
+imagePath = './validation_images/*.jpg'
+"""
 
-imageA = cv2.imread(imagePath)  # uint8 image
+images  = glob.glob('./validation_images/*.jpg')
+validations = np.zeros(104) 
+validations[75:104] = 1
 
-TL.get_classification(imageA)
+idx = 0
+true_possitives = 0
+false_possitive = 0
+for image in images:
+    
+    print(image)
+    image_ = cv2.imread(image)  # uint8 image
+    light = TL.get_classification(image_)
+    
+    if light ==  validations[idx]:
+        true_possitives += 1
+    else:
+        false_possitive += 1 
+        
+    idx +=1
+
+print("*********************************************************")
+print("*********************************************************")
+print("True Possitives: " + str(true_possitives)) 
+print("False Possitives: " + str(false_possitive))    
+
+
+
+
+
+
     

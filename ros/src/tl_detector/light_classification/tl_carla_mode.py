@@ -204,14 +204,14 @@ class TLClassifier_SRG():
                         
                         
                         accumulate_stop.append(True)
-                        print("RED")
+                        #print("RED")
                         
                         
                     if ( (color_prediction == 0) and (isred==False ) ):
                         
                         
                         accumulate_stop.append(False)
-                        print("GRENN")
+                        #print("GRENN")
                         
                         cv2.rectangle(  draw_img,
                                         (xbox_left, ytop_draw + ystart),
