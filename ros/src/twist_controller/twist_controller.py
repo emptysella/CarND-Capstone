@@ -19,7 +19,7 @@ class Controller(object):
 	accel_limit = kwargs["accel_limit"]
 	self.sample_rate = kwargs["sample_rate"]
         self.deadband    = kwargs['deadband']
-	self.pid = PID(0.5, 0.001, 0.01, decel_limit, accel_limit)
+	self.pid = PID(0.5, 0.005, 0.05, decel_limit, accel_limit)
 	self.yaw_controller = YawController(wheel_base, steer_ratio, self.min_speed, max_lat_accel, max_steer_angle)
 	self.filter_throttlebrake = LowPassFilter(0.07, 0.02)
 
@@ -37,7 +37,7 @@ class Controller(object):
             throttle = self.filter_throttlebrake.filt(throttle)
         elif throttle_brake < -self.deadband:
             throttle = 0.
-            
+            brake = -  (throttle_brake/2)           
 
 	steer = self.yaw_controller.get_steering(target_linear_velocity, target_angular_velocity, current_linear_velocity)
         # handling boundary conditions for steer  based on deadband  
