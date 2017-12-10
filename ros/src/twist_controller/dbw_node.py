@@ -39,7 +39,7 @@ class DBWNode(object):
         steer_ratio = rospy.get_param('~steer_ratio', 14.8)
         max_lat_accel = rospy.get_param('~max_lat_accel', 3.)
         max_steer_angle = rospy.get_param('~max_steer_angle', 8.)
-
+        self.percentagefactor = 1000
         self.steer_pub = rospy.Publisher('/vehicle/steering_cmd',
                                          SteeringCmd, queue_size=1)
         self.throttle_pub = rospy.Publisher('/vehicle/throttle_cmd',
@@ -113,7 +113,7 @@ class DBWNode(object):
 
         bcmd.pedal_cmd_type = BrakeCmd.CMD_PERCENT
         if self.brake_deadband > 0.1:
-            brake *= 1000  # multiplier for sim
+            brake *= self.percentagefactor  # multiplier for sim
         bcmd.pedal_cmd = brake
         self.brake_pub.publish(bcmd)
 
