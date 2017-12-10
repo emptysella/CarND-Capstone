@@ -110,10 +110,10 @@ class DBWNode(object):
         bcmd.pedal_cmd_type = BrakeCmd.CMD_TORQUE
         bcmd.pedal_cmd = brake
 
-
+        # using brake pedal command type as percentage , same as used for throttle 
         bcmd.pedal_cmd_type = BrakeCmd.CMD_PERCENT
         if self.brake_deadband > 0.1:
-            brake *= self.percentagefactor  # multiplier for sim
+            brake *= self.percentagefactor  
         bcmd.pedal_cmd = brake
         self.brake_pub.publish(bcmd)
 
