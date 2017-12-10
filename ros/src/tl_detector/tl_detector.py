@@ -149,7 +149,12 @@ class TLDetector(object):
             self.prev_light_loc = None
             return False
 
-        cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "bgr8")
+        if hasattr(self.camera_image, 'encoding'):
+            if self.camera_image.encoding == '8UC3':
+                self.camera_image.encoding = "rgb8"
+        else:
+            self.camera_image.encoding = 'rgb8'
+        cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "rgb8")
 
         #Get classification
         return self.light_classifier.get_classification(cv_image)
@@ -181,6 +186,7 @@ class TLDetector(object):
         #TODO find the closest visible traffic light (if one exists)
         mindistance = sys.maxsize
 	light_wp_idx = None
+        self.slmindistance = 9999
 
 	# update waypoint poisition close to car_position
         if (self.waypoints == None) or (car_position == None):
@@ -234,12 +240,10 @@ class TLDetector(object):
                 stoplinepos = self.waypoints.waypoints[stop_wp_idx].pose.pose.position
                 self.slmindistance = self.eucledien_distance(carpose.x,carpose.y,carpose.z,stoplinepos.x,stoplinepos.y,stoplinepos.z)
                 #rospy.loginfo("self.slmindistance = %d", self.slmindistance) 
-                if (mindist < DISTANCE_LIMIT) :
+                if (self.slmindistance < DISTANCE_LIMIT) :
                     return stop_wp_idx, state
                 else:
                     return -1, TrafficLight.UNKNOWN
-            else:
-                return light_wp_idx, state
         #self.waypoints = None
         return -1, TrafficLight.UNKNOWN
 

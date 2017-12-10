@@ -38,7 +38,7 @@ class TLClassifier(object):
             for col in range((image_data.shape[1]/4), ((image_data.shape[1]) - stride), stride):
 		#Extract block data for detection of colors
                 ImageRoiBGR = image_data[row:row + blocksize, col:col + blocksize]
-                ImageRoi  = cv2.cvtColor(ImageRoiBGR, cv2.COLOR_BGR2HSV)
+                ImageRoi  = cv2.cvtColor(ImageRoiBGR, cv2.COLOR_RGB2HSV)
 		RedLRoi = cv2.inRange(ImageRoi, np.array([0, 100, 100]), np.array([10, 255, 255]))
         	RedHRoi = cv2.inRange(ImageRoi, np.array([150, 100, 100]), np.array([180, 255, 255]))
                 #YellowRoi = cv2.inRange(ImageRoi, np.array([20, 100, 100]), np.array([40, 255, 255]))
