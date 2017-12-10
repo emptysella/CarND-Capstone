@@ -98,7 +98,7 @@ def extract_features(
         #imageA_ = mpimg.imread(imagePath)
         imageB = imageA_
         imageA = cv2.normalize(imageA_, imageB, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
-        image = cv2.resize(imageA, (32,64))
+        image = cv2.resize(imageA, spatial_size)
         
         path_ = "image_" + str(i) + ".jpg"
         #cv2.imwrite(path_  ,image)

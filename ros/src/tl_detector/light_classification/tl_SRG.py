@@ -88,6 +88,8 @@ class TLClassifier_SRG():
                         scale,
                         svc,
                         X_scaler,
+                        svc_classifier,
+                        X_scaler_classifier,
                         orient,
                         pix_per_cell,
                         cell_per_block,
@@ -95,19 +97,21 @@ class TLClassifier_SRG():
                         hist_bins,
                         draw_img
                       ):
+        
+        
 
         svc_hsv = pickle.load( open("./training/models/model_classifier.pkl", "rb" ) )
         X_scaler_hsv = pickle.load( open("./training/models/scaler_classifier.pkl", "rb" ) )       
         
-        print(ystart)
+
         img_tosearch = img[ystart:ystop,:,:]
         img_raw = img[ystart:ystop,:,:]
-        cv2.imwrite('pre.jpg', img_tosearch*255)
+
         
         ctrans_tosearch = self.convert_color(img_tosearch, conv='RGB2YCrCb')
         ctrans_tosearch_hsv = self.convert_color(img_tosearch, conv='RGB2HSV')
         
-        cv2.imwrite('post.jpg'  ,ctrans_tosearch*255)
+
         if scale != 1:
             imshape = ctrans_tosearch.shape
             ctrans_tosearch = cv2.resize( ctrans_tosearch,
@@ -124,8 +128,8 @@ class TLClassifier_SRG():
         nfeat_per_block = orient*cell_per_block**2
 
         # 64 was the orginal sampling rate, with 8 cells and 8 pix per cell
-        window_width = 32
-        window_high  = 64
+        window_width = spatial_size[0]
+        window_high  = spatial_size[1]
         
         
         nblocks_per_window = (window_width // pix_per_cell)-1
@@ -189,18 +193,18 @@ class TLClassifier_SRG():
                     #---------------------------------------------------------------
                     # featutes extractor for the classifier
                     hist_features_hsv = features.color_hist(subimg_HSV, nbins=hist_bins)
-                    test_features_HSV = X_scaler_hsv.transform(np.hstack((  
-                                                                            hist_features_hsv,
-                                                                            subimg_HSV[:,:,0].ravel(),
-                                                                            subimg_HSV[:,:,1].ravel()
-                                                                        )).reshape(1, -1))  
-                      
-                    color_prediction = svc_hsv.predict(test_features_HSV)
+                    test_features_HSV = X_scaler_classifier.transform(np.hstack((  
+                                                                                hist_features_hsv,
+                                                                                subimg_HSV[:,:,0].ravel(),
+                                                                                subimg_HSV[:,:,1].ravel()
+                                                                                )).reshape(1, -1))  
+ 
+                     
+                    color_prediction = svc_classifier.predict(test_features_HSV)
                     
                     subimg_color =  img_raw[ytop:ytop+window_high, xleft:xleft+window_width]
                     isred = self.isRed((subimg_color*255).astype(np.uint8))
-                    
-                    
+                                        
                     if (color_prediction == 1) and isred:                      
                         cv2.rectangle(  draw_img,
                                         (xbox_left, ytop_draw + ystart),
@@ -271,11 +275,14 @@ class TLClassifier_SRG():
         cell_per_block = 2 #
 
         # Histogram Features Parameters
-        spatial_size, hist_bins = (32, 64), 128
+        spatial_size, hist_bins = (48, 96), 128
 
         # Predictor Parameters
         svc = pickle.load( open("./training/models/model_detector.pkl", "rb" ) )
         X_scaler = pickle.load( open("./training/models/scaler_detector.pkl", "rb" ) )
+        
+        svc_classifier = pickle.load( open("./training/models/model_classifier.pkl", "rb" ) )
+        X_scaler_classifier = pickle.load( open("./training/models/scaler_classifier.pkl", "rb" ) ) 
 
         frame = image_data
 
@@ -287,19 +294,21 @@ class TLClassifier_SRG():
         
         # Run the detector
         for ystart, ystop, scale in parameters:
-            out_img, box_list, bbList, stop = self.find_semaphore(    frame,
-                                                                ystart,
-                                                                ystop,
-                                                                scale,
-                                                                svc,
-                                                                X_scaler,
-                                                                orient,
-                                                                pix_per_cell,
-                                                                cell_per_block,
-                                                                spatial_size,
-                                                                hist_bins,
-                                                                draw_img
-                                                             )
+            out_img, box_list, bbList, stop = self.find_semaphore(  frame,
+                                                                    ystart,
+                                                                    ystop,
+                                                                    scale,
+                                                                    svc,
+                                                                    X_scaler,
+                                                                    svc_classifier,
+                                                                    X_scaler_classifier,
+                                                                    orient,
+                                                                    pix_per_cell,
+                                                                    cell_per_block,
+                                                                    spatial_size,
+                                                                    hist_bins,
+                                                                    draw_img
+                                                                 )
             
             flag_image_out = True
             if flag_image_out:

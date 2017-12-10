@@ -37,6 +37,13 @@ class TLClassifier():
         _______________________________________________________________________
         """
         light_out = TL_SRG.classifyTL(image)
+        
+        if light_out:
+            print("STOP")
+        else:
+            print("RUN")
+            
+            
         #boundingBox = image[crop[1]:crop[3],crop[0]:crop[2],:]*255
         #cv2.imwrite('draw_crop.jpg'  ,boundingBox)
         
@@ -89,8 +96,8 @@ imagePath = 'green_8.png'
 imagePath = 'image210.jpg'
 imagePath = 'red_0.png'
 imagePath = 'red_0.png'
-imagePath = '/Volumes/Samsung_T5/MORE_PROJECTS/SDC-System-Integration/test_images/loop_with_traffic_light_0739.jpg'
-imagePath = 'red_2.png'
+imagePath = '/Volumes/Samsung_T5/MORE_PROJECTS/SDC-System-Integration/test_images/just_traffic_light_0500.jpg'
+
 
 imageA = cv2.imread(imagePath)  # uint8 image
 

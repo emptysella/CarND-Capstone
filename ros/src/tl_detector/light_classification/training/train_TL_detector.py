@@ -27,7 +27,7 @@ classes = features.featuresByClasses(
                                     ImagesClassA,
                                     ImagesClassB,
                                     cspace         = 'YCrCb',
-                                    spatial_size   = (32,64),
+                                    spatial_size   = (48,96),
                                     hist_bins      = 128,
                                     hist_range     = (0, 256),
                                     orient         = 9,
