@@ -1,15 +1,15 @@
 import cv2
-import numpy as np
-import matplotlib.image as mpimg
-import tl_SWRP
+import tl_SWRP 
 import tl_SRG
+import numpy as np
 
 
 class TLClassifier():
 
     def __init__(self):
+        
          print("classification statrted...")
-         
+
          self.UNKNOWN  = 'unknow'
          self.GREEN    = 'green'
          self.YELLOW   = 'yellow'
@@ -36,24 +36,20 @@ class TLClassifier():
         Run the classifier of Sergio
         _______________________________________________________________________
         """
-        DETECTIONS = TL_SRG.classifyTL(image)
+        light_out = TL_SRG.classifyTL(image)
+        #boundingBox = image[crop[1]:crop[3],crop[0]:crop[2],:]*255
+        #cv2.imwrite('draw_crop.jpg'  ,boundingBox)
+        
 
         """
         Run the classifier of Swaroop
         _______________________________________________________________________
         """
 
-        lights = []
-        for detetcion in DETECTIONS:
-            # To modify--- crear crop
-            boundingBox = image
-            light_out = TL_SWRP.classifyTL(boundingBox)
-            lights.append(light_out)
+        #light_out = TL_SWRP.classifyTL(boundingBox.astype(np.uint8))
 
-        #### TODO: Logic to take a decision
+        #print(light_out)
 
-
-        light_swrp = TL_SWRP.classifyTL(image)
 
 
         """
@@ -65,7 +61,7 @@ class TLClassifier():
 
         #_______________________________________________________________________
 
-        light_type = light_swrp
+        light_type = light_out
 
         if light_type == 0:
             light = self.UNKNOWN
@@ -88,6 +84,16 @@ class TLClassifier():
 #******************************************************************************
 
 TL = TLClassifier()
+
+imagePath = 'green_8.png'
 imagePath = 'image210.jpg'
-imageA = mpimg.imread(imagePath)
+imagePath = 'red_0.png'
+imagePath = 'red_0.png'
+imagePath = '/Volumes/Samsung_T5/MORE_PROJECTS/SDC-System-Integration/test_images/loop_with_traffic_light_0739.jpg'
+imagePath = 'red_2.png'
+
+imageA = cv2.imread(imagePath)  # uint8 image
+
+
 TL.run(imageA)
+    

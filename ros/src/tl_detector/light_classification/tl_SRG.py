@@ -1,17 +1,27 @@
+import sys
+sys.path.insert(0,'./training')
+import features
 import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
 import pickle
 import math
-from scipy.ndimage.measurements import label
 import glob
 import cv2
 import numpy as np
-import features
+
+import tl_SWRP
+import cv2
+from scipy.ndimage.measurements import label
+
+
+
+
+
 
 class TLClassifier_SRG():
 
     def __init__(self):
-        self.blocksize = 96
+        self.blocksize = 64
 
         """
         light code:
@@ -32,13 +42,39 @@ class TLClassifier_SRG():
     def convert_color(self, img, conv='RGB2HSV'):
 
         if conv == 'RGB2HSV':
-            return cv2.cvtColor(img, cv2.COLOR_RGB2HSV)
+            return cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
         if conv == 'RGB2YCrCb':
             return cv2.cvtColor(img, cv2.COLOR_BGR2YCrCb)
         if conv == 'RGB2LUV':
-            return cv2.cvtColor(img, cv2.COLOR_RGB2LUV)
+            return cv2.cvtColor(img, cv2.COLOR_BGR2LUV)
 
 
+
+
+
+    """
+    ****************************************************************************
+    isRed
+    ****************************************************************************
+    """ 
+    def isRed(self, im):
+           
+        hsv     = cv2.cvtColor(im, cv2.COLOR_BGR2HSV)   
+        
+        red     =  cv2.inRange(hsv, np.array([0, 100, 120]), np.array([6, 190, 250]))
+        yellow  = cv2.inRange(hsv, np.array([20, 55, 100]), np.array([35, 255, 255]))     
+        green   = cv2.inRange(hsv, np.array([80, 20, 200]), np.array([100, 255, 255]))
+        
+        num_red = np.sum(red) + np.sum(yellow)
+        num_green = np.sum(green)    
+
+        
+        if num_red > num_green:
+            return True
+        else:
+            return False
+    
+    
 
     """
     ****************************************************************************
@@ -60,17 +96,23 @@ class TLClassifier_SRG():
                         draw_img
                       ):
 
-
-        img = img.astype(np.float32)/255
-
+        svc_hsv = pickle.load( open("./training/models/model_classifier.pkl", "rb" ) )
+        X_scaler_hsv = pickle.load( open("./training/models/scaler_classifier.pkl", "rb" ) )       
+        
+        print(ystart)
         img_tosearch = img[ystart:ystop,:,:]
+        img_raw = img[ystart:ystop,:,:]
+        cv2.imwrite('pre.jpg', img_tosearch*255)
+        
         ctrans_tosearch = self.convert_color(img_tosearch, conv='RGB2YCrCb')
-
+        ctrans_tosearch_hsv = self.convert_color(img_tosearch, conv='RGB2HSV')
+        
+        cv2.imwrite('post.jpg'  ,ctrans_tosearch*255)
         if scale != 1:
             imshape = ctrans_tosearch.shape
             ctrans_tosearch = cv2.resize( ctrans_tosearch,
                                           (np.int(imshape[1]/scale),
-                                          np.int(imshape[0]/scale)))
+                                          np.int(imshape[0]/scale)))          
 
         ch1 = ctrans_tosearch[:,:,0]
         ch2 = ctrans_tosearch[:,:,1]
@@ -82,12 +124,15 @@ class TLClassifier_SRG():
         nfeat_per_block = orient*cell_per_block**2
 
         # 64 was the orginal sampling rate, with 8 cells and 8 pix per cell
-        window = 64
-        nblocks_per_window = (window // pix_per_cell)-1
+        window_width = 32
+        window_high  = 64
+        
+        
+        nblocks_per_window = (window_width // pix_per_cell)-1
         cells_per_step = 2  # Instead of overlap, define how many cells to step
         nxsteps = (nxblocks - nblocks_per_window) // cells_per_step
         nysteps = (nyblocks - nblocks_per_window) // cells_per_step
-        nysteps = 16
+        nysteps = 8
         
         # Compute individual channel HOG features for the entire image
         hog1 = features.get_hog_features(ch1, orient, pix_per_cell, cell_per_block)
@@ -97,10 +142,12 @@ class TLClassifier_SRG():
         boxes = []
         bbList = []
 
+        stop = False
+        accumulate_stop = []
         for xb in range(nxsteps):
             for yb in range(nysteps):
 
-                ypos = yb*cells_per_step
+                ypos = yb*cells_per_step 
                 xpos = xb*cells_per_step
 
                 # Extract HOG for this patch
@@ -109,21 +156,24 @@ class TLClassifier_SRG():
                 hog_feat2 = hog2[ypos:ypos+nblocks_per_window, xpos:xpos+nblocks_per_window].ravel()
                 hog_feat3 = hog3[ypos:ypos+nblocks_per_window, xpos:xpos+nblocks_per_window].ravel()
                 hog_features = np.hstack((hog_feat1, hog_feat2, hog_feat3))
-
+                               
                 xleft = xpos*pix_per_cell
                 ytop = ypos*pix_per_cell
+                xbox_left = np.int(xleft)
+                ytop_draw = np.int(ytop)                
 
                 # Extract the image patch
                 #---------------------------------------------------------------
-                window_H = 128
-                subimg = cv2.resize(ctrans_tosearch[ytop:ytop+window_H, xleft:xleft+window], (128,64))
-                
-                
+                                
+                subimg      = ctrans_tosearch[ytop:ytop + window_high, xleft:xleft + window_width]
+                subimg_HSV  = ctrans_tosearch_hsv[ytop:ytop + window_high, xleft:xleft + window_width]
+          
+                # HOG real time TODO: change to make it fast
                 hog1_ = features.get_hog_features(subimg[:,:,0], orient, pix_per_cell, cell_per_block).ravel()
                 hog2_ = features.get_hog_features(subimg[:,:,1], orient, pix_per_cell, cell_per_block).ravel()
                 hog3_ = features.get_hog_features(subimg[:,:,2], orient, pix_per_cell, cell_per_block).ravel()
                 hog_features_ = np.hstack((hog1_, hog2_, hog3_))
-
+                            
                 # Get color features
                 #---------------------------------------------------------------
                 spatial_features = features.bin_spatial(subimg, size=spatial_size)
@@ -131,33 +181,74 @@ class TLClassifier_SRG():
 
                 # Scale features and make a prediction
                 #---------------------------------------------------------------
-                test_features = X_scaler.transform(np.hstack((spatial_features, hist_features, hog_features_)).reshape(1, -1))
-
-                #---------------------------------------------------------------
-                test_prediction = svc.predict(test_features)
-
-
-
-                if test_prediction == 1:
-
-                    xbox_left = np.int(xleft*scale)
-                    ytop_draw = np.int(ytop*scale)
-                    win_draw = np.int(window*scale)
-
-                    cv2.rectangle(  draw_img,
-                                    (xbox_left, ytop_draw+ystart),
-                                    ( (xbox_left + win_draw), (ytop_draw + win_draw + ystart) ),
-                                    (0, 255, 0),
-                                    3
-                                  )
-
-                    box = ((xbox_left, ytop_draw + ystart), (xbox_left + win_draw, ytop_draw + win_draw+ystart))
-                    bb = [xbox_left,ytop_draw+ystart,xbox_left+win_draw, ytop_draw+win_draw+ystart ]
-                    boxes.append(box)
-                    bbList.append(bb)
-
-        return draw_img, boxes, bbList
-
+                detector_features = X_scaler.transform(np.hstack((spatial_features,hist_features, hog_features_)).reshape(1, -1))      
+                detector_prediction = svc.predict(detector_features)
+                                
+                if detector_prediction == 1:
+                    
+                    #---------------------------------------------------------------
+                    # featutes extractor for the classifier
+                    hist_features_hsv = features.color_hist(subimg_HSV, nbins=hist_bins)
+                    test_features_HSV = X_scaler_hsv.transform(np.hstack((  
+                                                                            hist_features_hsv,
+                                                                            subimg_HSV[:,:,0].ravel(),
+                                                                            subimg_HSV[:,:,1].ravel()
+                                                                        )).reshape(1, -1))  
+                      
+                    color_prediction = svc_hsv.predict(test_features_HSV)
+                    
+                    subimg_color =  img_raw[ytop:ytop+window_high, xleft:xleft+window_width]
+                    isred = self.isRed((subimg_color*255).astype(np.uint8))
+                    
+                    
+                    if (color_prediction == 1) and isred:                      
+                        cv2.rectangle(  draw_img,
+                                        (xbox_left, ytop_draw + ystart),
+                                        ( (xbox_left + window_width), (ytop_draw + window_high + ystart) ),
+                                        (0, 0, 255),
+                                        1
+                                      )
+    
+                        box = ((xbox_left, ytop_draw + ystart), (xbox_left + window_width, ytop_draw + window_high + ystart))
+                        bb  = [xbox_left, ytop_draw + ystart, xbox_left + window_width, ytop_draw + window_high + ystart ] 
+                        boxes.append(box)
+                        bbList.append(bb)
+                        
+                        
+                        accumulate_stop.append(True)
+                        print("RED")
+                        
+                        
+                    if ( (color_prediction == 0) and (isred==False ) ):
+                        
+                        
+                        accumulate_stop.append(False)
+                        print("GRENN")
+                        
+                        cv2.rectangle(  draw_img,
+                                        (xbox_left, ytop_draw + ystart),
+                                        ( (xbox_left + window_width), (ytop_draw + window_high + ystart) ),
+                                        (0, 255, 0),
+                                        1
+                                      )
+            
+        #---------------------------------------------------------------
+        # Logic to manage false possitives
+        if len(accumulate_stop) > 0:
+            num_stop = sum(accumulate_stop)
+            len_stop = len(accumulate_stop) 
+            if num_stop > (len_stop/2):
+                stop = True
+            else:
+                stop = False
+        else:
+            stop = False
+            
+                  
+        return draw_img, boxes, bbList, stop
+        
+        
+    
 
     """
     ****************************************************************************
@@ -165,37 +256,38 @@ class TLClassifier_SRG():
     ****************************************************************************
     """
     def classifyTL(self, image_data):
-
+        
+        imageB = image_data
+        image_data = cv2.normalize(image_data, 
+                                   imageB,
+                                   alpha=0,
+                                   beta=1,
+                                   norm_type=cv2.NORM_MINMAX,
+                                   dtype=cv2.CV_32F)
+        
         # HoG Features Parameters
         orient         = 9
         pix_per_cell   = 8
         cell_per_block = 2 #
 
         # Histogram Features Parameters
-        spatial_size, hist_bins = (64, 64), 128
+        spatial_size, hist_bins = (32, 64), 128
 
         # Predictor Parameters
-        svc = pickle.load( open("model.pkl", "rb" ) )
-        X_scaler = pickle.load( open("scaler.pkl", "rb" ) )
+        svc = pickle.load( open("./training/models/model_detector.pkl", "rb" ) )
+        X_scaler = pickle.load( open("./training/models/scaler_detector.pkl", "rb" ) )
 
-        #frame = cv2.cvtColor(image_data, cv2.COLOR_BGR2RGB)
         frame = image_data
 
-        heat = np.zeros_like(frame[:,:,0]).astype(np.float)
         draw_img = np.copy(frame)
 
         #### PARAMETER TO TUNE #################################################
-        """
-        parameters = [ (150, 278, 1.0),
-                       (200, 328, 1.5),
-                       (200, 328, 2.2)]
-        """
+        parameters = [ (100, 350, 1.0)]
         
-        parameters = [ (0, 128, 1.0)]
-
-        DETECTIONS = []
+        
+        # Run the detector
         for ystart, ystop, scale in parameters:
-            out_img, box_list, bbList = self.find_semaphore(    frame,
+            out_img, box_list, bbList, stop = self.find_semaphore(    frame,
                                                                 ystart,
                                                                 ystop,
                                                                 scale,
@@ -208,8 +300,10 @@ class TLClassifier_SRG():
                                                                 hist_bins,
                                                                 draw_img
                                                              )
-            # out_img
-            DETECTIONS.append(box_list)
-
-
-        return DETECTIONS
+            
+            flag_image_out = True
+            if flag_image_out:
+                cv2.imwrite('output.jpg'  ,draw_img*255)
+  
+       
+        return stop
